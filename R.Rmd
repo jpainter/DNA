@@ -1,0 +1,22 @@
+R
+========================================================
+
+# New York Times
+The staff of New York Times info graphics department is...[video please](http://vimeo.com/21020824)
+
+NYT [blog](http://chartsnthings.tumblr.com/) about how they brainstorm and design effective graphics
+
+And, one of their former interns has a popular book and web-site on visualizations, [Flowing Data](http://flowingdata.com/) 
+
+Their basic workflow is to use [R](http://www.r-project.org/) for data and chart, Adobe for post chart clean up, and convert to [d3](http://d3js.org/) for interactive, web-based version
+
+#
+```{r, include=FALSE}
+summary(cars)
+```
+
+
+```{r fig.width=7, fig.height=6, include=FALSE}
+plot(cars)
+```
+

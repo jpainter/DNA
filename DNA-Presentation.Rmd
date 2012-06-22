@@ -1,0 +1,169 @@
+# Disease Notification Analysis 
+- DNA
+- John Painter
+- June  25, 2012
+================
+
+# What is DNA
+- a system for easily viewing and analyzing EDN
+- EDN -> ADN -> DNA
+- Reduces complex database to drag-and-drop pivot table
+
+# Where Does DNA Fit In?
+
+![](file://cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi%20Team/DNA/DNA-High-level-001.jpg)
+
+# DNA includes data from:
+ - AIS (1997--2000)
+ - IMP (2000--2009)
+ - EDN (2007--present)
+
+# How to access DNA
+* via SQL-Server
+* Excel
+ ** make connection
+ * drag-and-drop
+ * set it and forget it
+ * update when needed
+
+# Where to Find DNA Documentation?
+
+![](file://cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi%20Team/DNA/DNA documentation location.png)
+
+
+# Which Value?
+- 'All' counts all records from AIS, IMP, EDN
+- For AIS and IMP, limitted data 
+- - Only arrival date, TB class, country of birth 
+- vw EDN for counts of EDN records
+ - - Every field in DS forms available
+- WRAPS for counts of DOS refugee records
+ -- Nationality, ethnicity, language, marital status, relationship
+
+# DNA dimensions
+- dimensions like a variable, but may be cascading
+- flat dimension
+- Cascading dimension
+
+# Date ranges
+- Fiscal or calendar year
+- Month of year (May, 2012) or calendar month (May)
+- Same for quarter, week, and day
+
+# Table showing No. Records for 3 Systems
+
+# Table showing arrivals by Q station
+
+# Table showing arrival by Visa Type and Class B TB
+
+# Cumulative Refugee Arrivals
+
+```{r CumulativeRefugeeChart-Data, fig.cap='Cumulative Refugee Arrivals by Nationality', include=FALSE, message=FALSE}
+require(XLConnect)
+
+# Load spreadsheet
+wb <- loadWorkbook("DNA arrivals.xlsx")
+refugees <- readWorksheet(wb, sheet = "refugees", startRow=4, startCol=1, header = TRUE)
+  # Limit to countries with at least 1,000
+  refugees = refugees[refugees$Grand.Total>1000,]
+  # remove column with totals
+  refugees = refugees[,!( names(refugees) %in% "Grand.Total")] 
+  # remove unknown row
+  refugees = refugees[!( refugees$Row.Labels %in% "Unknown"),]
+  # remove row with totals
+  refugees = refugees[!( refugees$Row.Labels %in% "Grand Total"),]
+str(refugees)
+
+#Reshape data
+require(reshape)
+refugees.melt = melt.data.frame(refugees, variable_name="year", na.rm=TRUE)
+# remove years with no movement
+refugees.melt = refugees.melt[refugees.melt$value >0,]
+#rename years (remove 'calendar')
+refugees.melt$year = substr(refugees.melt$year, 10,13)
+head(refugees.melt)
+
+#calculate cumulative sums
+require(plyr)
+refugees.sum = ddply(refugees.melt, .(country=Row.Labels), summarize, year=I(year), total=cumsum(value))                        
+head(refugees.sum)
+```
+
+```{r CumulativeRefugeeChart, fig.cap='Cumulative Refugee Arrivals by Nationality', echo=FALSE}
+# Chart
+require(ggplot2)
+require(directlabels)
+ggplot( data=refugees.sum, aes(x=year, y=total, group=country)) + 
+      theme_bw() + 
+      geom_line(size=.75, colour="grey") +
+      geom_text(data = refugees.sum[refugees.sum$year == "2012",], aes(label = country), hjust = 1, vjust = 1, size=4)
+ggsave("refugee arrival cumsum.pdf", width=8, height=6)
+```
+
+# Refugee Arrivals by Day
+```{r heatmap-data, fig.cap='Refugee Arrivals by Day', fig.width=7, fig.height=6, include=FALSE }
+require(quantmod)
+require(ggplot2)
+require(reshape2)
+require(plyr)
+require(scales)
+require(lubridate)
+
+options(stringsAsFactors=FALSE)
+# Load spreadsheet
+wb <- loadWorkbook("DNA.xlsx")
+RefugeeArrivalDay <- readWorksheet(wb, sheet = "WRAPSDaily", startRow=4, startCol=1, header = TRUE)
+
+# RefugeeArrivalDay <- read.csv("C:/Users/bzp3/Desktop/R/Miscellaneous/RefugeeArrivalDay.csv", header=TRUE)
+str(RefugeeArrivalDay)
+
+# Make a dataframe
+dat<-RefugeeArrivalDay
+#get date (Wednesday, March 2 2012) into R 
+dat$date <- strptime(dat$Row.Labels, format="%A, %B %d %Y")
+# Remove row with grand total and Unknown
+dat <- dat[!dat$Row.Label %in% c('Grand Total','Unknown'),]
+
+# We will facet by year ~ month, and each subgraph will
+# show week-of-month versus weekday
+# the year is simple
+dat$year<-as.numeric(as.POSIXlt(dat$date)$year+1900)
+# the month too 
+dat$month<-as.numeric(as.POSIXlt(dat$date)$mon+1)
+# but turn months into ordered facors to control the appearance/ordering in the presentation
+dat$monthf<-factor(dat$month,levels=as.character(1:12),labels=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"),ordered=TRUE)
+# the day of week is again easily found
+dat$weekday = as.POSIXlt(dat$date)$wday
+# again turn into factors to control appearance/abbreviation and ordering
+# I use the reverse function rev here to order the week top down in the graph
+# you can cut it out to reverse week order
+dat$weekdayf<-factor(dat$weekday,levels=rev(0:6),labels=rev(c("Mon","Tue","Wed","Thu","Fri","Sat","Sun")),ordered=TRUE)
+# the monthweek part is a bit trickier 
+# first a factor which cuts the data into month chunks
+dat$yearmonth<-as.yearmon(dat$date)
+dat$yearmonthf<-factor(dat$yearmonth)
+# then find the "week of year" for each day
+dat$week <- as.numeric(format(dat$date,"%W"))
+# and now for each monthblock we normalize the week to start at 1 
+dat<-ddply(dat,.(yearmonthf),transform,monthweek=1+week-min(week))
+#convert Grand.Total to total; remove comma from values >1,000
+dat$total <- as.numeric(gsub(",","", dat$Grand.Total))
+```
+
+```{r heatmap, results='hide', dpi=200, echo=FALSE}
+ggplot( dat, aes(monthweek, weekdayf, fill=total )) + 
+  geom_tile(colour="white") + facet_grid(year~monthf) +
+  scale_fill_continuous(low = "white",
+                        high = "blue",  na.value = "white") +
+#   scale_file_manual()
+#   scale_fill_gradient( low="white", high="blue" ) +
+  opts(title = "Refugee Arrivals") +  xlab("Week of Month") + ylab("")
+```
+
+- 2003--2008, strong seasonal pattern
+- - 1,179 arrived September27, 2008
+- Since 2007, fewer extreme days
+- then mean number of refugee arrivals is `r mean(dat$total)`
+
+# Slidify
+pandoc -s -S -i -t slidy --mathjax C:\Users\bzp3\Desktop\DNA\DNA-Presentation.md -o C:\Users\bzp3\Desktop\DNA\DNA-Presentation-slildy.html
