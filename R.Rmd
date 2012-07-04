@@ -1,5 +1,27 @@
+!SLIDE fill
+
+```{r setup, echo = F}
+library(knitr)
+opts_knit$set(out.format = 'html')
+opts_chunk$set(highlight = TRUE, tidy = FALSE)
+render_html()
+```
+
+<h1>
+  <span class = 'yellow'>Slidify</font><br/>
+  <span class = 'white' style = 'font-size: 0.7em;'>
+    Reproducible HTML5 Slides
+  </span><br/>
+  <span class = 'white' style = 'font-size: 0.5em;'>
+    by Ramnath Vaidyanathan
+  </span>
+</h1>
+
+![slides](http://goo.gl/EpXln)
+
+!SLIDE
 R
-========================================================
+=
 
 # New York Times
 The staff of New York Times info graphics department is...[video please](http://vimeo.com/21020824)
@@ -11,12 +33,4 @@ And, one of their former interns has a popular book and web-site on visualizatio
 Their basic workflow is to use [R](http://www.r-project.org/) for data and chart, Adobe for post chart clean up, and convert to [d3](http://d3js.org/) for interactive, web-based version
 
 #
-```{r, include=FALSE}
-summary(cars)
-```
-
-
-```{r fig.width=7, fig.height=6, include=FALSE}
-plot(cars)
-```
 

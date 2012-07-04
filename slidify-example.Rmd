@@ -1,0 +1,52 @@
+!SLIDE fill
+
+```{r setup, echo = F}
+library(knitr)
+opts_knit$set(out.format = 'html')
+opts_chunk$set(highlight = TRUE, tidy = FALSE)
+render_html()
+```
+
+<h1>
+  <span class = 'yellow'>Slidify</font><br/>
+  <span class = 'white' style = 'font-size: 0.7em;'>
+    Reproducible HTML5 Slides
+  </span><br/>
+  <span class = 'white' style = 'font-size: 0.5em;'>
+    by Ramnath Vaidyanathan
+  </span>
+</h1>
+
+![slides](http://goo.gl/EpXln)
+
+!SLIDE
+
+### Overview ###
+
+The objective of `slidify` is to make it easy to create reproducible HTML5 presentations from `.Rmd` files. 
+
+The guiding philosophy of `slidify` is to completely separate writing of content from its rendering, so that content can be written once in `R Markdown`, and rendered as an `HTML5` presentation using any of the `HTML5` slide frameworks supported.
+
+!SLIDE
+
+# Motivation #
+
+!SLIDE
+
+# Several HTML5 slide frameworks exist... #
+
+!SLIDE fill
+
+### deck.js ###
+
+
+![deck.js](assets/media/deck.js.png)
+
+!SLIDE fill
+
+### slidy ###
+
+![slidy](assets/media/slidy.png)
+```{r}
+slidify("slidify-example.Rmd")
+```

@@ -101,7 +101,7 @@ ggsave("refugee arrival cumsum.pdf", width=8, height=6)
 ```
 
 # Refugee Arrivals by Day
-```{r heatmap-data, fig.cap='Refugee Arrivals by Day', fig.width=7, fig.height=6, include=FALSE }
+```{r heatmap-data, fig.cap='Refugee Arrivals by Day', fig.width=7, fig.height=6, include=FALSE}
 require(quantmod)
 require(ggplot2)
 require(reshape2)
@@ -167,3 +167,6 @@ ggplot( dat, aes(monthweek, weekdayf, fill=total )) +
 
 # Slidify
 pandoc -s -S -i -t slidy --mathjax C:\Users\bzp3\Desktop\DNA\DNA-Presentation.md -o C:\Users\bzp3\Desktop\DNA\DNA-Presentation-slildy.html
+-library(slidify)
+- - slidify("DNA-Presentation.Rmd")
+
