@@ -4,7 +4,7 @@
 library(RODBC)
 edn.con = odbcConnectAccess2007("c:/Users/bzp3/desktop/EDN geocode.accdb")
 # Adresses are the final destination.  Will need to add starting points
-qry = "SELECT * FROM Table1 WHERE (((DateDiff('d',[ArrivalDate],Date()))<=14) 
+qry = "SELECT * FROM Table1 WHERE (((DateDiff('d',[ArrivalDate],Date()))<=31) 
       AND ((Table1.Status)='OK') AND ((Table1.Country) Is Not Null))"
 edn = sqlQuery( edn.con, qry)
 # all those that are updates after arrrival
@@ -175,18 +175,34 @@ library(caTools)
 library(lubridate)
 
 # create factor for dates
-gcircles.rg$day = factor(day(gcircles.rg$ArrivalDate))
+    # gcircles.rg$day = factor(day(gcircles.rg$ArrivalDate))
+gcircles.rg$day = factor(gcircles.rg$ArrivalDate)
 
 # Function to plot arrivals on same day (need to add month...)
 plots = function(.id){
+    date= as.Date(levels(gcircles.rg$day)[.id]) ;
+    text=format(date, "%A, %b %d, %Y") ;
     g + geom_line( aes(long.recenter, lat, group=group.regroup, colour=Country, alpha=Country), 
                           lineend="round",lwd=0.3, 
-                          data= subset( gcircles.rg, as.numeric(day)==.id ) )
+                          data= subset( gcircles.rg, as.numeric(day)==.id ) ) +
+        opts( title=text ) 
 }
+
+#### PDF movie
+saveLatex({
+  for (i in 1:4 )  {
+    print( plots(i)) 
+  }
+}, img.name = "incoming", ani.opts = "controls,loop, width=0.95\\\\textwidth", 
+  latex.filename = ifelse(interactive(), "in.tex", ""), 
+  interval = 0.1, ani.dev = "pdf", ani.type = "pdf",
+  ani.width = 7, ani.height = 7, 
+  documentclass = paste("\\\\documentclass{article}",
+                        "\\\\usepackage[papersize={7in,7in},margin=0.3in]{geometry}", sep = "\n"))
 
 #### HTML movie----
 saveHTML({
-  ani.options(interval = 1 , nmax = 30)
+  ani.options(interval = 1 , nmax = 30, outdir = getwd())
   for (i in 1:nlevels(gcircles.rg$day))  {
     print( plots(i))
     }
@@ -197,36 +213,10 @@ dev.off()
 
 ### GIF animations ###----
 saveGIF({
-  ani.options(nmax = 30)
+  ani.options(nmax = 30, outdir = getwd())
   for (i in 1:nlevels(gcircles.rg$day))  {
     print( plots(i))
   }
-},interval = 0.5, outdir = getwd(), movie.name = "incoming.gif", 
+},interval = 0.5, movie.name = "incoming.gif", 
         ani.width = 600, ani.height = 600)
 
-# another way... ----
-saveMovie({
-    for (i in nrow(nlevels(gcircles.rg$day)))  {
-      print( plots(i))
-      } 
-    }, movie.name = "incoming.gif", clean = T, 
-          interval = 0.1 , ani.width = 600, ani.height = 600, ani.options("convert") )
-      
-
-##  map code from from spatial analysis----
-# This step removes the axes labels etc when called in the plot.
-xquiet<- scale_x_continuous("", breaks=NULL)
-yquiet<-scale_y_continuous("", breaks=NULL, limits=c(-60, 90))
-opts <- opts(panel.background = theme_rect(fill='grey',colour='grey'))
-quiet<-list(xquiet, yquiet, opts)
-
-# Create a base plot
-base<- ggplot(worldmap, aes(x = long, y = lat))
-
-# Then build up the layers
-wrld<-c(geom_polygon(aes(long,lat,group=group), size = 0.1, colour= "grey", fill="white", alpha=1, data=worldmap))
-# urb<- c(geom_polygon(aes(long,lat,group=group), size = 0.1, colour= "#FCFFF1", fill="#FCFFF1", alpha=1, data=urbanareas))
-
-# Bring it all together with the great circles
-base + WorldMap + coord_equal()+ quiet +
-geom_path(data=gcircles, aes(long,lat, group=group, colour=Status),alpha=0.1, lineend="round",lwd=0.1)
