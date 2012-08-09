@@ -1,4 +1,5 @@
 # Incoming!
+startTime = date()
 
 # Read EDN Geocode ----
 library(RODBC)
@@ -39,7 +40,7 @@ save(country.lat.long,file="country.lat.long.RData")
   missing
  
 
-#   ----
+#  Insert lat/long data for place of origin ----
 load("country.lat.long.RData")
 # join with edn data, find unmatched, edit iso values, then remerge
 incoming = merge(edn, country.lat.long, by.x="Country", by.y="FIPS")
@@ -59,7 +60,7 @@ incoming$StartLong = ifelse(!is.na(incoming$Longitude.1), incoming$Longitude.1, 
 # calculate routes -- Dateline Break FALSE, otherwise we get a bump in the shifted ggplots----
 library(geosphere)
 rts <- gcIntermediate( incoming[,c('StartLong', 'StartLat')], incoming[,c('Longitude', 'Latitude')], 
-                       100, breakAtDateLine=FALSE, addStartEnd=TRUE, sp=TRUE) 
+                       50, breakAtDateLine=FALSE, addStartEnd=TRUE, sp=TRUE) 
 require(ggplot2)
 source ("fortify-spatial.r")
 rts.ff <- fortify.SpatialLinesDataFrame(rts) # convert into something ggplot can plot
@@ -124,7 +125,6 @@ save(worldmap.cp, file="worldmap.cp.RData")
 states.cp <- ddply(states.rg, .(group.regroup), ClosePolygons, "long.recenter", "order")  # use the new grouping var
 save(states.cp, file="states.cp.RData")
 
-
 #### retreive map data ----
 load("worldmap.cp.RData")
 load("states.cp.RData")
@@ -150,26 +150,26 @@ routes = geom_line(aes(long.recenter,lat, group=group.regroup, colour=Country, t
 g + routes
 
 # Save ----
-# ggsave("Incoming.pdf", width=8, height=6, dpi=300)
-ggsave("images/Incoming.png", width=4, height=3)
+ggsave("Incoming.pdf", width=8, height=6, dpi=300)
+# ggsave("images/Incoming.png", width=4, height=3)
 # ggsave("Incoming.svg")
 
-# Zoom into US ---
+# Zoom into US ----
 g + routes + ylim(10, 55) + xlim(230, 310)
 
 # Save zoom  
-ggsave("images/Incoming-zoom.png", width=4, height=3)
+ggsave("images/Incoming-zoom.pdf", width=8, height=6,  dpi=300)
 
-# view secondary migration ----
+# Secondary migration ----
 secondary = geom_line(aes(long.recenter,lat, group=group.regroup, colour=Class, alpha=Class), lineend="round",lwd=0.2, 
                       data= gcircles.rg[!is.na(gcircles.rg$Latitude.1),])
 zoom = g + ylim(12, 80) + xlim(175, 310)
 zoom + secondary + ylim(12, 80) + xlim(175, 310)
 
 # Save secondary zoom 
-ggsave("images/Incoming-secondary.png", width=8, height=6)
+ggsave("images/Incoming-secondary.pdf", width=8, height=6,  dpi=300)
 
-#### save images and convert them to a single GIF----
+#### Animate daily arrivals ----
 library(animation)
 library(caTools)
 library(lubridate)
@@ -178,27 +178,50 @@ library(lubridate)
     # gcircles.rg$day = factor(day(gcircles.rg$ArrivalDate))
 gcircles.rg$day = factor(gcircles.rg$ArrivalDate)
 
-# Function to plot arrivals on same day (need to add month...)
+# Function to plot arrivals per day ----
+library(RColorBrewer)
 plots = function(.id){
-    date= as.Date(levels(gcircles.rg$day)[.id]) ;
-    text=format(date, "%A, %b %d, %Y") ;
-    g + geom_line( aes(long.recenter, lat, group=group.regroup, colour=Country, alpha=Country), 
-                          lineend="round",lwd=0.3, 
-                          data= subset( gcircles.rg, as.numeric(day)==.id ) ) +
-        opts( title=text ) 
+  date= as.Date(levels(gcircles.rg$day)[.id]) ;
+  text=format(date, "%A, %b %d, %Y") ;
+  country.freq = names(sort(table(gcircles.rg$Country), decreasing = TRUE)) ; # list countries in descending order of arrivals
+  myColors <-  rbind(brewer.pal(8,"Set1"), brewer.pal(8,"Dark2"),  brewer.pal(8,"Accent"), brewer.pal(8,"Set2"),
+                     brewer.pal(8,"Pastel1"), brewer.pal(8,"Pastel2"), brewer.pal(8,"Pastel2"), brewer.pal(8,"Pastel2"), 
+                     brewer.pal(8,"Pastel2"), brewer.pal(8,"Pastel2"),brewer.pal(8,"Pastel2"),brewer.pal(8,"Pastel2") ) ;
+  names(myColors) <- country.freq ;
+  colScale <- scale_colour_manual(name="Country", values = myColors) ;
+  g + 
+  geom_line( aes(long.recenter, lat, group=group.regroup, colour=Country, alpha=1 ), 
+                 lineend="round",lwd=0.3, 
+                 data= subset( gcircles.rg, as.numeric(day)==.id ) ) +
+  opts( title=text ) +
+  colScale
 }
 
-#### PDF movie
+# PDF movie ----
 saveLatex({
-  for (i in 1:4 )  {
+  for (i in 1:nlevels(gcircles.rg$day) )  {
     print( plots(i)) 
   }
-}, img.name = "incoming", ani.opts = "controls,loop, width=0.95\\\\textwidth", 
-  latex.filename = ifelse(interactive(), "in.tex", ""), 
-  interval = 0.1, ani.dev = "pdf", ani.type = "pdf",
-  ani.width = 7, ani.height = 7, 
-  documentclass = paste("\\\\documentclass{article}",
-                        "\\\\usepackage[papersize={7in,7in},margin=0.3in]{geometry}", sep = "\n"))
+}, img.name = "in", 
+  ani.opts = "controls, loop", 
+  latex.filename = "incoming.tex" , 
+  install.animate = TRUE,
+  overwrite = TRUE, 
+  interval = 0.5, 
+  ani.dev = "pdf",
+  ani.type = "pdf",
+  ani.width = 9,
+  ani.height = 6.5, 
+  documentclass = "\\documentclass{article}\n\\usepackage[papersize={11in,8.5in},margin=1in]{geometry}"
+)
+
+#  How long? ----
+stopTime = date()
+startTime
+stopTime
+
+# These movies are not as good, 
+## but may be used if Latex is not installed (the add-on program that is used to make pdf movie)
 
 #### HTML movie----
 saveHTML({
@@ -211,7 +234,7 @@ saveHTML({
          description = "each line is a new arrival")
 dev.off() 
 
-### GIF animations ###----
+### GIF movie ----
 saveGIF({
   ani.options(nmax = 30, outdir = getwd())
   for (i in 1:nlevels(gcircles.rg$day))  {
