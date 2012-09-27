@@ -206,7 +206,7 @@ library(RODBC)
 edn.con = odbcConnectAccess2007("//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/EDN geocode.accdb")
 
 # Adresses are the final destination.  Will need to add starting points
-# qry = "SELECT * FROM Table1 WHERE (((DateDiff('d',[ArrivalDate],Date()))<=32) 
+# qry = "SELECT * FROM Table1 WHERE (((DateDiff('d',[ArrivalDate],Date()))<=365) 
 #       AND ((Table1.Status)='OK') AND ((Table1.Country) Is Not Null))"
 qry = "SELECT * FROM Table1 WHERE ((Table1.Status)='OK') AND ((Table1.Country) Is Not Null))"
 edn = sqlQuery( edn.con, qry)
@@ -275,7 +275,6 @@ incoming$id <-as.character(c(1:nrow(incoming))) # that rts.ff$id is a char
 gcircles <- merge(rts.ff, incoming, all.x=T, by="id") # join attributes, we keep them all, just in case
 save(gcircles, file="gcircles.RData")
 
-
 @
 
 Map of EDN arrivals from DATE! to DATE@ ...
@@ -340,7 +339,7 @@ startTime
 stopTime
 @
 
-<<plot-map, cache=TRUE, fig.cap='Map of EDN Arrivals', eval=FALSE>>=
+<<plot-map, cache=TRUE, fig.cap='Map of EDN Arrivals', eval=TRUE>>=
 #### retreive map data ----
 load("worldmap.cp.RData")
 load("states.cp.RData")
@@ -361,7 +360,7 @@ g= ggplot() +
   ylim(-60, 90) +
   coord_equal()
 
-routes = geom_line(aes(long.recenter,lat, group=group.regroup, colour=Country, type=Class), alpha=.1, lineend="round", lwd=.1, 
+routes = geom_line(aes(long.recenter,lat, group=group.regroup, colour=AlienType, type=Class), alpha=.1, lineend="round", lwd=.1, 
                    data= gcircles.rg)
 g + routes
 
