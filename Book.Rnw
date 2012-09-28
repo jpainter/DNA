@@ -34,10 +34,10 @@ if (!exists('.author')) .author = Sys.info()['user']
 
 \newpage
 %%%%%%%% LONG-TERM TRENDS
-\section{long-term trends}
+\section{Long-Term Trends}
 
-\subsection{Incoming Refugees}
-<<incoming-refugees, fig.height=7, fig.width=7, fig.cap='Refugee Resettlement by Nationality', cache=TRUE>>=
+\subsection{Incoming Refugees by Nationality}
+<<'incoming-refugees', fig.height=7, fig.width=7, fig.cap='Refugee Resettlement by Nationality', cache=TRUE>>=
 require(XLConnect)
 
 # Load spreadsheet
@@ -102,8 +102,74 @@ p
 @
 \FloatBarrier
 
-\subsection{Heatmap of Refugee Arrivals by Region}
-<<Heatmap, eval=TRUE, fig.height=7, fig.width=7, fig.cap="Heatmap of Refugee Arrivals", cache=TRUE>>=
+\subsection{Incoming Refugees by Region}
+<<'incoming-refugees', fig.height=7, fig.width=7, fig.cap='Refugee Resettlement by Nationality', cache=TRUE>>=
+require(XLConnect)
+
+# Load spreadsheet
+wb <- loadWorkbook("//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/DNA/DNA arrivals.xlsx")
+refugees <- readWorksheet(wb, sheet = "refugees", startRow=4, startCol=1, header = TRUE)
+  # Limit to countries with at least 1,000
+  refugees = refugees[refugees$Grand.Total>1000,]
+  # remove column with totals
+  refugees = refugees[,!( names(refugees) %in% "Grand.Total")] 
+  # remove unknown row
+  refugees = refugees[!( refugees$Row.Labels %in% "Unknown"),]
+  # remove row with totals
+  refugees = refugees[!( refugees$Row.Labels %in% "Grand Total"),]
+# str(refugees)
+
+#Reshape data
+require(reshape)
+refugees.melt = melt.data.frame(refugees, variable_name="year", na.rm=TRUE)
+# remove years with no movement
+refugees.melt = refugees.melt[refugees.melt$value >0,]
+# Limit to years with at least 1,000
+refugees.melt = refugees.melt[refugees.melt$value>500,]
+#rename years (remove 'calendar')
+refugees.melt$year = substr(refugees.melt$year, 10,13)
+# head(refugees.melt)
+
+# #calculate cumulative sums
+## unload packages that seem to be having conflict when loading plyr in .rnw (no problem with loading plyr in .r file.  why?)
+  detach(package:reshape, unload=TRUE)
+  detach(package:tables, unload=TRUE) 
+  detach(package:Hmisc, unload=TRUE)
+  detach(package:xtable, unload=TRUE)
+require(plyr)
+refugees.sum = ddply(refugees.melt, .(country=Row.Labels), summarize, year=I(year), total=cumsum(value))      
+# head(refugees.sum)
+
+# Chart
+require(ggplot2)
+require(scales)
+
+# change Dem. Rep Congo to DRC
+refugees.sum[refugees.sum$country=="Dem. Rep. Congo", c("country")] = "DRC"
+
+# Set levels for years--include one extra year.
+refugees.sum$year = as.numeric(refugees.sum$year) # convert year to numeric variable 
+minyear = min(refugees.sum$year)
+maxyear = max(refugees.sum$year) + 1
+year.range = minyear:maxyear
+
+# data set of the last observation (for points and/or labels)
+last.point = ddply(refugees.sum, .(country), function(x) x[c(nrow(x)),])
+
+p = ggplot( data=refugees.sum, aes(x=year, y=total, group=country)) + 
+      theme_bw()  +
+      geom_line(size=.75, colour="grey") +
+      geom_point(data = last.point , aes(x=year, y=total), size=4, colour="grey") +
+      geom_text(data = last.point, aes(label = country), hjust = .5, vjust = -.5 , size=4) +
+      scale_y_continuous( "Refugee Arrivals\n", breaks= seq(0, 100000, 10000), labels=comma(seq(0, 100000, 10000))) +
+      scale_x_continuous( "Year", breaks=year.range, limits=c(1997,2013) ) + 
+      opts(title="Unfolding Refuge Resettlement:\nCumulative Arrivals Since 1997, by Nationality (minimum 500 arrivals per year)") 
+p
+@
+\FloatBarrier
+
+\subsection{Seasonality of incoming Refugees}
+<<'Heatmap', eval=TRUE, fig.height=7, fig.width=7, fig.cap="Heatmap of Refugee Arrivals", cache=TRUE>>=
 # Load spreadsheet
 require(XLConnect)
 wb <- loadWorkbook(
@@ -175,8 +241,8 @@ ggplot( dat.melt, aes(monthweek, region, fill=region , alpha=value ) ) +
 @
 \FloatBarrier 
 
-\subsection{Immigrants with Class B Conditions}
-<<UnfoldingTB>>=
+\subsection{Immigrants with Class B Conditions by Nationality}
+<<'UnfoldingTB'>>=
 @
 \FloatBarrier 
 
@@ -184,12 +250,12 @@ ggplot( dat.melt, aes(monthweek, region, fill=region , alpha=value ) ) +
 
 \subsection{secondary migration}
 
-\subsection{ltbi rates among children (B2) and adults (follow-up exams of B1s)}
+\subsection{LTBI rates among children (B2) and adults (follow-up exams of B1s)}
 
 \subsection{TB prevalence by age-group, by visa type, with annual percent change}
 - (note from RR) 'It seems to me that the 2.9 perc annual rate of infection estimated from the Vietnamese applicants would make most of the TB  infections more than 2 yrs remote, except in the very young. Refugees might be in a totally different situation.' 
 
-\subsection{the proportion of refugees that adjust status}
+\subsection{The proportion of refugees that adjust status}
 —the proportion of refugees that adjust status and therefore have completed vx—by ethnicity, age, etc.
 
 \newpage
@@ -198,7 +264,7 @@ ggplot( dat.melt, aes(monthweek, region, fill=region , alpha=value ) ) +
 \FloatBarrier
 
 \subsection{EDN Notifications by Country of Origin}
-<<incoming-map-data, cache=TRUE, fig.cap='Map of EDN Arrivals', eval=FALSE>>=
+<<'incoming-map-data', cache=TRUE, fig.cap='Map of EDN Arrivals', eval=FALSE>>=
 startTime = date()
 
 # Read EDN Geocode 
@@ -237,6 +303,24 @@ colnames(edn)[14]<-"country.code"
 # # save
 # save(country.lat.long,file="country.lat.long.RData")  
 load("country.lat.long.RData")
+
+# Get avg lat-long for states !Only need to download once. ----
+library(rgdal)
+library(maptools) 
+states.shp <- importShapefile("C:/Users/bzp3/Desktop/R/Maps/US/statesp020.shp") # from http://nationalatlas.gov/atlasftp.html#statep0
+str(states.shp@data)  # @data to primary variables (excludes polygon stuff)
+
+# Get centroid for each states
+library(PBSmapping)
+
+states.centroid <- calcCentroid (states.shp, rollup = 2)
+# # merge
+#   country.lat.long = merge(iso, fips, by="ISO2")
+# 
+# # save
+# save(country.lat.long,file="country.lat.long.RData")  
+load("country.lat.long.RData")
+
 
 #  Insert lat/long data for place of origin ----
 # join with edn data, find unmatched, edit iso values, then remerge
@@ -277,9 +361,9 @@ save(gcircles, file="gcircles.RData")
 
 @
 
-Map of EDN arrivals from DATE! to DATE@ ...
+Map of EDN arrivals from DATE! to DATE@ ...Width of line is proportional to the number of arrivals
 
-<<recalculate-map-data, cache=TRUE, fig.cap='Map of EDN Arrivals', eval=FALSE>>=
+<<'recalculate-map-data', cache=TRUE, fig.cap='Map of EDN Arrivals', eval=FALSE>>=
 ########################## Run this when updating the map...it takes a very long time.... 
 ### Functions to regroup split lines and polygons when recentering 
 # takes dataframe, column with long and unique group variable, returns df with added column named group.regroup
@@ -339,7 +423,7 @@ startTime
 stopTime
 @
 
-<<plot-map, cache=TRUE, fig.cap='Map of EDN Arrivals', eval=TRUE>>=
+<<'plot-map', cache=TRUE, fig.cap='Map of EDN Arrivals', eval=TRUE>>=
 #### retreive map data ----
 load("worldmap.cp.RData")
 load("states.cp.RData")
@@ -351,10 +435,10 @@ g= ggplot() +
   opts(panel.background = theme_rect(fill='grey95',colour='grey95')) + 
   geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="#f9f9f9", colour = "grey", data=worldmap.cp) +
   geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="White", colour = "grey35", alpha=.1, data=states.cp) +  
-  opts(panel.grid.minor = theme_blank(), panel.grid.major = theme_blank(),  
-       axis.ticks = theme_blank(), 
-       axis.title.x = theme_blank(), axis.title.y = theme_blank(), 
-       axis.text.x = theme_blank(), axis.text.y = theme_blank()
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank(),  
+       axis.ticks = element_blank(), 
+       axis.title.x = element_blank(), axis.title.y = element_blank(), 
+       axis.text.x = element_blank(), axis.text.y = element_blank()
        , legend.position = "none"
        ) +
   ylim(-60, 90) +
@@ -369,7 +453,7 @@ g + routes
 @
 \FloatBarrier
 
-\subsection{Heatmap of Refugee Arrivals}
+\subsection{Daily Refugee Arrivals}
 \FloatBarrier
 
 \newpage
@@ -377,8 +461,8 @@ g + routes
 \section{Special views of data}
 
 - Percent class b, by country
-<<PercentClassBArrived, cache=FALSE>>=
-read_chunk("C:/Users/bzp3/Desktop/Linkage/PhData/PercentClassBArrived.R")
+<<'PercentClassBArrived', cache=FALSE>>=
+read_chunk("C:/Users/bzp3/Desktop/Analysis/Linkage/PhData/PercentClassBArrived.R")
 @
 
 - linkage project--time to TB diagnosis
@@ -389,7 +473,7 @@ read_chunk("C:/Users/bzp3/Desktop/Linkage/PhData/PercentClassBArrived.R")
 \section{Computing Environment}
 The R session information (including the OS info, R version and all
 packages used):
-<<session-info, cache=FALSE, results='markup'>>=
+<<'session-info', cache=FALSE, results='markup'>>=
 sessionInfo()
 Sys.time()
 @

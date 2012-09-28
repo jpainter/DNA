@@ -1,3 +1,4 @@
+## @knitr UnfoldingTB
 # chart annual refugees by country
 
 # Load the XLConnect package
@@ -111,9 +112,9 @@ p = ggplot( data=TBcountry, aes(x=year, y=total, group=country)) +
 
 p+ opts(title="Unfolding TB Arrivals by Country:\nCumulative Class B Arrivals Since 2003")
 
-ggsave("TB-by-country.svg")
-ggsave("images/TB-by-country.png", width=4, height=3)
-ggsave("TB-by-country.pdf", width=8, height=6)
+# ggsave("TB-by-country.svg")
+# ggsave("images/TB-by-country.png", width=4, height=3)
+# ggsave("TB-by-country.pdf", width=8, height=6)
 
 
 

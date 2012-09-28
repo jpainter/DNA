@@ -1,108 +1,115 @@
 # Disease Notification Analysis 
-- DNA
-- John Painter
-- June  25, 2012
-================
+## DNA
+## John Painter
+## July 5, 2012
 
-# What is DNA
+# What is DNA?
 - a system for easily viewing and analyzing EDN
-- EDN -> ADN -> DNA
+- "EDN"" -> "ADN"" -> "DNA""
 - Reduces complex database to drag-and-drop pivot table
+- All aggregate data
+- but can drillthrough to individual records
 
 # Where Does DNA Fit In?
 
-![](file://cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi%20Team/DNA/DNA-High-level-001.jpg)
+![](file:images/DNA-High-level-001.jpg)
 
-# DNA includes data from:
- - AIS (1997--2000)
- - IMP (2000--2009)
- - EDN (2007--present)
+# DNA harmonizes data from:
+ - 3 notification systems
+ -- AIS (1997--2000)
+ -- IMP (2000--2009)
+ -- EDN (2007--present)
+ - Mulitple DS-forms 
 
-# How to access DNA
-* via SQL-Server
-* Excel
- ** make connection
- * drag-and-drop
- * set it and forget it
- * update when needed
+# How can I access DNA?
+- via SQL-Server 2008 Business Intelligence Design Studio
+- Excel
+ -- make connection
+ -- drag-and-drop
+ -- update when needed
+ 
+# All DGMQ granted read-only access
+* Drillthrough (linelist with names) available, when appropriate
+* John and Zanju can change design 
 
-# Where to Find DNA Documentation?
+# Where is DNA Documentation?
+## //cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi%20Team/DNA
+![](file:images/DNA documentation location.png)
 
-![](file://cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi%20Team/DNA/DNA documentation location.png)
 
-
-# Which Value?
-- 'All' counts all records from AIS, IMP, EDN
+# What is counted?
+- DNA counts records (other values, eg. sum are available)
+- vwEDN = count of EDN records, vwIMP= count of IMP, etc.
+- 'All' = sum of all records from AIS, IMP, EDN
 - For AIS and IMP, limitted data 
-- - Only arrival date, TB class, country of birth 
-- vw EDN for counts of EDN records
- - - Every field in DS forms available
-- WRAPS for counts of DOS refugee records
+ -- Only arrival date, TB class, country of birth 
+-For EDN  
+- - Every field in DS forms available
+- WRAPS for counts of refugee records (DOS)
+ -- Special variables not captured on DS forms
  -- Nationality, ethnicity, language, marital status, relationship
+- Immigration Yearbook for counts of Total Immigrants (DHS)
+ -- Can be used as denominator data for calculating rates among immigrants
 
 # DNA dimensions
-- dimensions like a variable, but may be cascading
-- flat dimension
-- Cascading dimension
+- dimensions are like a variable, but may be cascading
+- First, Lets look at some traditional, 'flat', dimensions (WRAPS, Syphilis, AlienChestXray)
+- now, lets look at some Cascading dimensions (BirthCountry, TBClass)
 
 # Date ranges
 - Fiscal or calendar year
 - Month of year (May, 2012) or calendar month (May)
 - Same for quarter, week, and day
 
-# Table showing No. Records for 3 Systems
+# Tables 
+- placeholder for online demo
+ -- arrivals by Q station
+ -- arrivals by Visa Type and Class B TB
 
-# Table showing arrivals by Q station
+# Visualize Data
+- Import data into other packages (R)
 
-# Table showing arrival by Visa Type and Class B TB
+# Refugees 
 
+![](file:images/refugee-arrival-cumsum.png)
 
-# Sample chunks....
+# TB Notifications (Immigrants and Refugees)
+- By Country
 
+![](file:images/TB-by-country.png)
 
+# TB Notifications (Immigrants and Refugees)
+- By State
 
-
-
-
-```
-## Loading required package: ggplot2
-```
-
-
-
-```
-## Loading required package: directlabels
-```
-
-
-
-```
-## Loading required package: grid
-```
-
-![Cumulative Refugee Arrivals by Nationality](figure/CumulativeRefugeeChart.png) 
-
+![](file:images/TB-by-state.png)
 
 # Refugee Arrivals by Day
 
-
-
-
-
-```r
-ggplot(dat, aes(monthweek, weekdayf, fill = total)) + geom_tile(colour = "white") + 
-    facet_grid(year ~ monthf) + scale_fill_continuous(low = "white", high = "blue", 
-    na.value = "white") + # scale_file_manual() scale_fill_gradient( low='white', high='blue' ) +
-opts(title = "Refugee Arrivals") + xlab("Week of Month") + ylab("")
-```
-
-![plot of chunk heatmap](figure/heatmap.png) 
-
-
 - 2003--2008, strong seasonal pattern
-- - 1,179 arrived September27, 2008
+ -- 1,179 arrived September27, 2008
 - Since 2007, fewer extreme days
-- then mean number of refugee arrivals is `242.4646`
 
-# Slidify
-pandoc -s -S -i -t slidy --mathjax C:\Users\bzp3\Desktop\DNA\DNA-Presentation.md -o C:\Users\bzp3\Desktop\DNA\DNA-Presentation-slildy.html
+![](file:images/Refugee-Arrival-HeatMap.png)
+
+
+# EDN Notifications, June 2012
+- Each line represents a person
+
+![](file:images/Incoming.png)
+
+# EDN Notifications, June 2012
+- Zoom into continental US
+
+![](file:images/Incoming-zoom.png)
+
+# HTML5 slides
+- Several programs generate slides from a generic markup file (.md)
+- R creates the .md file
+- PanDoc converts to 
+
+  -- Slidy
+   ---pandoc -s -S -i -t slidy --mathjax DNA-Presentation.md -o DNA-Presentation-slidy.html
+   --- OR
+    ---- library(slidify)
+    ---- slidify("DNA-Presentation.Rmd")
+
