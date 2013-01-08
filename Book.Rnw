@@ -7,16 +7,16 @@
 \usepackage{fixltx2e}
 \usepackage{booktabs} % for table formatting
 
-<<setup, echo=FALSE , message=FALSE, cache=FALSE>>=
-opts_chunk$set( echo=FALSE, 
+<<'setup', echo=FALSE , message=FALSE, cache=FALSE>>=
+opts_chunk$set( echo=FALSE,  cache=TRUE ,
                 fig.align='center', fig.show='hold', fig.width=6, fig.height=4,
-                fig.path='images', fig.align='center',
+                fig.path='images/', fig.align='center',
                 message=FALSE, comment="", tidy=TRUE, results='asis')
 options(replace.assign=TRUE,width=90)
 if (!exists('.title')) .title = 'Immigrant, Refugee, and Migrant Health Branch'
 if (!exists('.author')) .author = Sys.info()['user']
 @
-<<title, echo=FALSE, results=hide, message=FALSE, cache=FALSE>>=
+<<'title', echo=FALSE, results=hide, message=FALSE, cache=FALSE>>=
 .title= 'Epidemiology Book of the Immigrant, Refugee, and Migrant Health Branch'
 .author = 'John A. Painter, DVM, MS'
 @
@@ -37,7 +37,7 @@ if (!exists('.author')) .author = Sys.info()['user']
 \section{Long-Term Trends}
 
 \subsection{Incoming Refugees by Nationality}
-<<'incoming-refugees', fig.height=7, fig.width=7, fig.cap='Refugee Resettlement by Nationality', cache=TRUE>>=
+<<'incoming-refugees-nationality', fig.height=7, fig.width=7, fig.cap='Refugee Resettlement by Nationality', cache=TRUE>>=
 require(XLConnect)
 
 # Load spreadsheet
@@ -103,7 +103,7 @@ p
 \FloatBarrier
 
 \subsection{Incoming Refugees by Region}
-<<'incoming-refugees', fig.height=7, fig.width=7, fig.cap='Refugee Resettlement by Nationality', cache=TRUE>>=
+<<'incoming-refugees-region', fig.height=7, fig.width=7, fig.cap='Refugee Resettlement by Nationality', cache=TRUE>>=
 require(XLConnect)
 
 # Load spreadsheet
@@ -169,7 +169,7 @@ p
 \FloatBarrier
 
 \subsection{Seasonality of incoming Refugees}
-<<'Heatmap', eval=TRUE, fig.height=7, fig.width=7, fig.cap="Heatmap of Refugee Arrivals", cache=TRUE>>=
+<<'Heatmap', eval=TRUE, fig.height=7, fig.width=7, fig.cap="Heatmap of Refugee Arrivals">>=
 # Load spreadsheet
 require(XLConnect)
 wb <- loadWorkbook(
@@ -235,9 +235,10 @@ x.tab = xtabs(value~year+region, data=dat.melt)
 # xtable(x.tab, caption ="Table of Refugee Arrivals by Region of Origin", label ="Region-Table", digits = 4)
 
 require(ggplot2)
-ggplot( dat.melt, aes(monthweek, region, fill=region , alpha=value ) ) + 
-  geom_tile(colour="white") + facet_grid(year~monthf) +
-  opts(title = "Refugee Arrivals") +  xlab("Week of Month") + ylab("Region")
+heatmap = ggplot( dat.melt, aes(monthweek, region, fill=region , alpha=value ) ) + 
+          geom_tile(colour="white") + facet_grid(year~monthf) +
+          opts(title = "Refugee Arrivals") +  xlab("Week of Month") + ylab("Region")
+heatmap
 @
 \FloatBarrier 
 
@@ -264,7 +265,7 @@ ggplot( dat.melt, aes(monthweek, region, fill=region , alpha=value ) ) +
 \FloatBarrier
 
 \subsection{EDN Notifications by Country of Origin}
-<<'incoming-map-data', cache=TRUE, fig.cap='Map of EDN Arrivals', eval=FALSE>>=
+<<'incoming-map-data', fig.cap='Map of EDN Arrivals',eval=false>>=
 startTime = date()
 
 # Read EDN Geocode 
@@ -272,9 +273,9 @@ library(RODBC)
 edn.con = odbcConnectAccess2007("//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/EDN geocode.accdb")
 
 # Adresses are the final destination.  Will need to add starting points
-# qry = "SELECT * FROM Table1 WHERE (((DateDiff('d',[ArrivalDate],Date()))<=365) 
-#       AND ((Table1.Status)='OK') AND ((Table1.Country) Is Not Null))"
-qry = "SELECT * FROM Table1 WHERE ((Table1.Status)='OK') AND ((Table1.Country) Is Not Null))"
+qry = "SELECT * FROM Table1 WHERE (((DateDiff('d',[ArrivalDate],Date()))<=365) 
+      AND ((Table1.Status)='OK') AND ((Table1.Country) Is Not Null))"
+# qry = "SELECT * FROM Table1 WHERE ((Table1.Status)='OK') AND ((Table1.Country) Is Not Null))"
 edn = sqlQuery( edn.con, qry)
 odbcCloseAll()
 
@@ -357,17 +358,20 @@ rts.ff <- fortify.SpatialLinesDataFrame(rts) # convert into something ggplot can
 
 incoming$id <-as.character(c(1:nrow(incoming))) # that rts.ff$id is a char
 gcircles <- merge(rts.ff, incoming, all.x=T, by="id") # join attributes, we keep them all, just in case
+# remove unneeded objects
+rm(rts, rts.ff, incoming)
 save(gcircles, file="gcircles.RData")
-
+stoptime = date()
 @
 
 Map of EDN arrivals from DATE! to DATE@ ...Width of line is proportional to the number of arrivals
 
-<<'recalculate-map-data', cache=TRUE, fig.cap='Map of EDN Arrivals', eval=FALSE>>=
+<<'recalculate-map-data', fig.cap='Map of EDN Arrivals'>>=
 ########################## Run this when updating the map...it takes a very long time.... 
 ### Functions to regroup split lines and polygons when recentering 
 # takes dataframe, column with long and unique group variable, returns df with added column named group.regroup
 RegroupElements <- function(df, longcol, idcol){  
+  browser
   g <- rep(1, length(df[,longcol]))
   if (diff(range(df[,longcol])) > 300) {          # check if longitude within group differs more than 300 deg, ie if element was split
     d <- df[,longcol] > mean(range(df[,longcol])) # we use the mean to help us separate the extreme values
@@ -392,16 +396,16 @@ ClosePolygons <- function(df, longcol, ordercol){
 }
 
 # Recenter data ----
-center <- 275 # positive values only - US centered view is 260
+  load("gcircles.RData")
+  center <- 275 # positive values only - US centered view is 260
 
 # shift coordinates to recenter great circles
-gcircles$long.recenter <-  ifelse(gcircles$long  < center - 180 , gcircles$long + 360, gcircles$long) 
+  gcircles$long.recenter <-  ifelse(gcircles$long  < center - 180 , gcircles$long + 360, gcircles$long) 
 
 # now regroup lines
-library(plyr)
-load("gcircles.RData")
-gcircles.rg <- ddply(gcircles, .(id), RegroupElements, "long.recenter", "id")  # reallly reallly long function.....
-save(gcircles.rg, file="gcircles.rg.RData")
+  library(plyr)
+  gcircles.rg <- ddply(gcircles, .(id), RegroupElements, "long.recenter", "id")  # reallly reallly long function.....
+  save(gcircles.rg, file="gcircles.rg.RData")
 
 # Recenter maps  !Only needs to be done once. 
 # require(maps)
@@ -418,21 +422,19 @@ save(gcircles.rg, file="gcircles.rg.RData")
 # states.cp <- ddply(states.rg, .(group.regroup), ClosePolygons, "long.recenter", "order")  # use the new grouping var
 # save(states.cp, file="states.cp.RData")
 
-stopTime = date()
-startTime
-stopTime
 @
 
-<<'plot-map', cache=TRUE, fig.cap='Map of EDN Arrivals', eval=TRUE>>=
+<<'plot-map', cache=TRUE, fig.cap='Map of EDN Arrivals'>>=
 #### retreive map data ----
 load("worldmap.cp.RData")
 load("states.cp.RData")
 load("gcircles.rg.RData")
 
 # plot ----
+plotStartTime = date()
 require(ggplot2)
 g= ggplot() +
-  opts(panel.background = theme_rect(fill='grey95',colour='grey95')) + 
+  theme(panel.background = element_rect(fill='grey95',colour='grey95')) + 
   geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="#f9f9f9", colour = "grey", data=worldmap.cp) +
   geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="White", colour = "grey35", alpha=.1, data=states.cp) +  
   theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank(),  
@@ -444,12 +446,21 @@ g= ggplot() +
   ylim(-60, 90) +
   coord_equal()
 
-routes = geom_line(aes(long.recenter,lat, group=group.regroup, colour=AlienType, type=Class), alpha=.1, lineend="round", lwd=.1, 
-                   data= gcircles.rg)
+routes = geom_line(aes(long.recenter,lat, 
+                       group=group.regroup, 
+                       colour=AlienType, 
+                       type=Class), 
+                   alpha=.1, 
+                   lineend="round", 
+                   lwd=.1, 
+                   data= gcircles.rg  
+                   )  
 g + routes
 
 #  How long did it take to run? ----
-
+plotStopTime = date()
+# plotStartTime
+# plotStopTime
 @
 \FloatBarrier
 
