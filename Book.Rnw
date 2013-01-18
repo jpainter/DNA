@@ -1,44 +1,30 @@
 \documentclass{article}
 
-% Yihui's knitrsettings from example https://github.com/yihui/knitr/blob/master/inst/examples/knitr-minimal.Rnw
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace} %for Hmisc::describe
+\usepackage{relsize}  %for Hmisc::describe
+\usepackage[section, above]{placeins}  %% keeps output from floating into adjoining sections
+\usepackage{fixltx2e}
+\usepackage{booktabs} % for table formatting
 
-\usepackage[sc]{mathpazo}
-%\usepackage[T1]{fontenc}
-\usepackage{geometry}
-\geometry{verbose,tmargin=2.5cm,bmargin=2.5cm,lmargin=2.5cm,rmargin=2.5cm}
-\setcounter{secnumdepth}{2}
-\setcounter{tocdepth}{3}
-\usepackage{url}
-\usepackage[unicode=true,pdfusetitle,
- bookmarks=true,bookmarksnumbered=true,bookmarksopen=true,bookmarksopenlevel=2,
- breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=false]
- {hyperref}
-\hypersetup{
- pdfstartview={XYZ null null 1}}
-\usepackage{breakurl}
-
-\begin{document}
-\SweaveOpts{concordance=TRUE}
-
-<<defaults, echo=FALSE, results=hide, message=FALSE, cache=FALSE>>=
-if (!exists('.knitr.title')) .knitr.title = 'Immigrant, Refugee, and Migrant Health Branch'
-if (!exists('.knitr.author')) .knitr.author = Sys.info()['user']
-.knitr.title= 'Epidemiology Book of the Immigrant, Refugee, and Migrant Health Branch'
-.knitr.author = 'John A. Painter, DVM, MS'
-
-# Set options for report
-opts_chunk$set(comment = "")
-opts_chunk$set(echo = FALSE)
-opts_chunk$set(message = FALSE)
-opts_chunk$set(tidy = TRUE)
-
-# this is equivalent to \SweaveOpts{...}
-opts_chunk$set(fig.path='images', fig.align='center', fig.show='hold')
-options(replace.assign=TRUE,width=90)
+<<'setup', echo=FALSE , message=FALSE, cache=FALSE>>=
+opts_chunk$set( echo=TRUE,  cache=TRUE ,
+                fig.align='center', fig.show='hold', 
+                fig.width=6, fig.height=4,
+                fig.path='images/', fig.align='center',
+                message=FALSE, comment="", tidy=TRUE, results='asis')
+options(replace.assign=TRUE,width=60)
+if (!exists('.title')) .title = 'Immigrant, Refugee, and Migrant Health Branch'
+if (!exists('.author')) .author = Sys.info()['user']
+@
+<<"title", echo=FALSE, results="hide", message=FALSE, cache=FALSE>>=
+.title= 'Epidemiology Book of the Immigrant, Refugee, and Migrant Health Branch'
+.author = 'John A. Painter, DVM, MS'
 @
 
-\title{\Sexpr{.knitr.title}}
-\author{\Sexpr{.knitr.author}%
+\begin{document}
+\title{\Sexpr{.title}}
+\author{\Sexpr{.author}%
 \thanks{Epidemiology Team: John A. Painter (lead), Kendra Cuffe, Sasi Jonnalagadda, Yecai Liu, Rossanne Philen, Zanju Wang, Meghan Weems.%
 }}
 
@@ -48,14 +34,156 @@ options(replace.assign=TRUE,width=90)
 \listoffigures % inserts 'List of Figures' (numbers and captions)
 
 \newpage
-\section{long-term trends}
-\begin{enumerate}
+%%%%%%%% LONG-TERM TRENDS
+\section{Long-Term Trends}
 
-\item incoming refugees
+\subsection{Incoming Refugees by Nationality}
+<<'incoming-refugees-nationality', fig.height=7, fig.width=7, fig.cap='Refugee Resettlement by Nationality', cache=TRUE>>=
+require(XLConnect)
 
-\item Heatmap of Refugee Arrivals
+# Load spreadsheet
+excel.file = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/DNA/DNA arrivals.xlsx"
+wb <- loadWorkbook(excel.file)
+refugees <- readWorksheet(wb, sheet = "refugees", startRow=4, startCol=1, header = TRUE)
+  # Limit to countries with at least 1,000
+  refugees = refugees[refugees$Grand.Total>1000,]
+  # remove column with totals
+  refugees = refugees[,!( names(refugees) %in% "Grand.Total")] 
+  # remove unknown row
+  refugees = refugees[!( refugees$Row.Labels %in% "Unknown"),]
+  # remove row with totals
+  refugees = refugees[!( refugees$Row.Labels %in% "Grand Total"),]
+# str(refugees)
 
-<<Heatmap, eval=TRUE>>=
+#Reshape data
+require(reshape)
+refugees.melt = melt.data.frame(refugees, variable_name="year", na.rm=TRUE)
+# remove years with no movement
+refugees.melt = refugees.melt[refugees.melt$value >0,]
+# Limit to years with at least 1,000
+refugees.melt = refugees.melt[refugees.melt$value>500,]
+#rename years (remove 'calendar')
+refugees.melt$year = substr(refugees.melt$year, 10,13)
+# head(refugees.melt)
+
+# #calculate cumulative sums
+## unload packages that seem to be having conflict when loading plyr in .rnw (no problem with loading plyr in .r file.  why?)
+  detach(package:reshape, unload=TRUE)
+  detach(package:tables, unload=TRUE) 
+  detach(package:Hmisc, unload=TRUE)
+  detach(package:xtable, unload=TRUE)
+require(plyr)
+refugees.sum = ddply(refugees.melt, .(country=Row.Labels), summarize, year=I(year), 
+                     total=cumsum(value))      
+# head(refugees.sum)
+
+# Chart
+require(ggplot2)
+require(scales)
+
+# change Dem. Rep Congo to DRC
+refugees.sum[refugees.sum$country=="Dem. Rep. Congo", c("country")] = "DRC"
+
+# Set levels for years--include one extra year.
+refugees.sum$year = as.numeric(refugees.sum$year) # convert year to numeric variable 
+minyear = min(refugees.sum$year)
+maxyear = max(refugees.sum$year) + 1
+year.range = minyear:maxyear
+
+# data set of the last observation (for points and/or labels)
+last.point = ddply(refugees.sum, .(country), function(x) x[c(nrow(x)),])
+
+p = ggplot( data=refugees.sum, aes(x=year, y=total, group=country)) + 
+      theme_bw()  +
+      geom_line(size=.75, colour="grey") +
+      geom_point(data = last.point , aes(x=year, y=total), size=4, colour="grey") +
+      geom_text(data = last.point, aes(label = country), hjust = .5, vjust = -.5 , 
+                size=4) +
+      scale_y_continuous( "Refugee Arrivals\n", breaks= seq(0, 100000, 10000), 
+                          labels=comma(seq(0, 100000, 10000))) +
+      scale_x_continuous( "Year", breaks=year.range, limits=c(1997,2013) ) + 
+      opts(title="Unfolding Refuge Resettlement:
+           \nCumulative Arrivals Since 1997, by Nationality 
+           \n(minimum 500 arrivals per year)") 
+p
+@
+\FloatBarrier
+
+\subsection{Incoming Refugees by Region}
+<<'incoming-refugees-region', fig.height=7, fig.width=7, fig.cap='Refugee Resettlement by Region', cache=TRUE>>=
+require(XLConnect)
+
+# Load spreadsheet
+excel.file = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/DNA/DNA arrivals.xlsx"
+wb <- loadWorkbook(excel.file)
+refugees <- readWorksheet(wb, sheet = "refugees", startRow=4, startCol=1, 
+                          header = TRUE)
+  # Limit to countries with at least 1,000
+  refugees = refugees[refugees$Grand.Total>1000,]
+  # remove column with totals
+  refugees = refugees[,!( names(refugees) %in% "Grand.Total")] 
+  # remove unknown row
+  refugees = refugees[!( refugees$Row.Labels %in% "Unknown"),]
+  # remove row with totals
+  refugees = refugees[!( refugees$Row.Labels %in% "Grand Total"),]
+# str(refugees)
+
+#Reshape data
+require(reshape)
+refugees.melt = melt.data.frame(refugees, variable_name="year", na.rm=TRUE)
+# remove years with no movement
+refugees.melt = refugees.melt[refugees.melt$value >0,]
+# Limit to years with at least 1,000
+refugees.melt = refugees.melt[refugees.melt$value>500,]
+#rename years (remove 'calendar')
+refugees.melt$year = substr(refugees.melt$year, 10,13)
+# head(refugees.melt)
+
+# #calculate cumulative sums
+## unload packages that seem to be having conflict when loading plyr in .rnw (no problem with loading plyr in .r file.  why?)
+  detach(package:reshape, unload=TRUE)
+  detach(package:tables, unload=TRUE) 
+  detach(package:Hmisc, unload=TRUE)
+  detach(package:xtable, unload=TRUE)
+require(plyr)
+refugees.sum = ddply(refugees.melt, .(country=Row.Labels), 
+                     summarize, year=I(year), total=cumsum(value))      
+# head(refugees.sum)
+
+# Chart
+require(ggplot2)
+require(scales)
+
+# change Dem. Rep Congo to DRC
+refugees.sum[refugees.sum$country=="Dem. Rep. Congo", c("country")] = "DRC"
+
+# Set levels for years--include one extra year.
+refugees.sum$year = as.numeric(refugees.sum$year) # convert year to numeric variable 
+minyear = min(refugees.sum$year)
+maxyear = max(refugees.sum$year) + 1
+year.range = minyear:maxyear
+
+# data set of the last observation (for points and/or labels)
+last.point = ddply(refugees.sum, .(country), function(x) x[c(nrow(x)),])
+
+p = ggplot( data=refugees.sum, aes(x=year, y=total, group=country)) + 
+      theme_bw()  +
+      geom_line(size=.75, colour="grey") +
+      geom_point(data = last.point , aes(x=year, y=total), size=4, colour="grey") +
+      geom_text(data = last.point, aes(label = country), hjust = .5, vjust = -.5 , 
+                size=4) +
+      scale_y_continuous( "Refugee Arrivals\n", breaks= seq(0, 100000, 10000), 
+                          labels=comma(seq(0, 100000, 10000))) +
+      scale_x_continuous( "Year", breaks=year.range, limits=c(1997,2013) ) + 
+      opts(title="Unfolding Refuge Resettlement:
+           \nCumulative Arrivals Since 1997, by Region 
+           \n(minimum 500 arrivals per year)") 
+p
+@
+\FloatBarrier
+
+\subsection{Seasonality of incoming Refugees}
+<<'Heatmap', eval=TRUE, fig.height=7, fig.width=7, fig.cap="Heatmap of Refugee Arrivals", cache=TRUE>>=
 # Load spreadsheet
 require(XLConnect)
 wb <- loadWorkbook(
@@ -67,8 +195,11 @@ wb <- loadWorkbook(
 
 # Refugee arrivals by day
 ####
-RefugeeArrivalDay <- readWorksheet(wb, sheet = "RefugeesArrivalsByRegionByDay", startRow=4, startCol=1, header = TRUE) # start row is row with cell "Row Labels"
-str(RefugeeArrivalDay)
+# start row is row with cell "Row Labels"
+RefugeeArrivalDay <- readWorksheet(wb, 
+                                   sheet = "RefugeesArrivalsByRegionByDay", 
+                                   startRow=4, startCol=1, header = TRUE) 
+# str(RefugeeArrivalDay)
 
 # Make a dataframe
 dat<-RefugeeArrivalDay
@@ -86,13 +217,18 @@ dat <- dat[dat$year>2002 & !is.na(dat$year),]
 # the month too 
 dat$month<-as.numeric(as.POSIXlt(dat$date)$mon+1)
 # but turn months into ordered facors to control the appearance/ordering in the presentation
-dat$monthf<-factor(dat$month,levels=as.character(1:12), labels=c("Jan", "Feb", "Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"),ordered=TRUE)
+dat$monthf<-factor(dat$month,levels=as.character(1:12), 
+                   labels=c("Jan", "Feb", "Mar","Apr","May","Jun",
+                            "Jul","Aug","Sep","Oct","Nov","Dec"),
+                   ordered=TRUE)
 # the day of week is again easily found
 dat$weekday = as.POSIXlt(dat$date)$wday
 # again turn into factors to control appearance/abbreviation and ordering
 # I use the reverse function rev here to order the week top down in the graph
 # you can cut it out to reverse week order
-dat$weekdayf<-factor(dat$weekday,levels=rev(0:6),labels=rev(c("Mon","Tue", "Wed", "Thu","Fri","Sat","Sun")),ordered=TRUE)
+dat$weekdayf<-factor(dat$weekday,levels=rev(0:6),
+                     labels=rev(c("Mon","Tue", "Wed", "Thu","Fri","Sat","Sun")),
+                     ordered=TRUE)
 
 # the monthweek part is a bit trickier
 # first a factor which cuts the data into month chunks
@@ -101,60 +237,318 @@ dat$yearmonth<-as.yearmon(dat$date)
 dat$yearmonthf<-factor(dat$yearmonth)
 # then find the "week of year" for each day
 dat$week <- as.numeric(format(dat$date,"%W"))
+
 # and now for each monthblock we normalize the week to start at 1 
-dat<-ddply(dat,.(yearmonthf),transform,monthweek=1+week-min(week))
+require(plyr)
+#error: arguments imply differing number of rows:
+# dat<-ddply(dat, .(yearmonthf), mutate, monthweek=1 + week - min(week))
+dat<-ddply(dat, .(yearmonthf), .fun = function(x){data.frame(
+  Grand.Total = x$Grand.Total, year = x$year, week = x$week, monthf = x$monthf, 
+  Africa =x[,c(2)], 
+  Asia = x[,c(3)], Europe = x[,c(4)], North.America = x[,c(5)], Oceania = x[,c(6)], 
+  South.America = x[,c(7)],
+  monthweek=1 + x$week - min(x$week)
+  )} ) 
+
 #convert Grand.Total to total; remove comma from values >1,000
 dat$total <- as.numeric(gsub(",","", dat$Grand.Total))
 
 #Reshape data
 require(reshape)
-dat.melt = melt(dat, id=c("year", "monthf", "monthweek"), measure.vars=c(2:7), variable_name="region", na.rm=TRUE)
-
-# examine results
-library(Hmisc)  # for weighted tables
-x.tab = xtabs(value~year+region, data=dat.melt)
-x.tab
-
-# format for pdf (does not seem to work with KNITR)
-# require(xtable)
-# xtable(x.tab, caption ="Table of Refugee Arrivals by Region of Origin", label ="Region-Table", digits = 4)
+dat.melt = melt(dat, id=c("year", "monthf", "monthweek"), 
+                measure.vars=c("Africa", "Asia", "Europe", "North.America", 
+                               "Oceania", "South.America"), 
+                variable_name="region", na.rm=TRUE)
 
 require(ggplot2)
-ggplot( dat.melt, aes(monthweek, region, fill=region , alpha=value ) ) + 
-  geom_tile(colour="white") + facet_grid(year~monthf) +
-  opts(title = "Refugee Arrivals") +  xlab("Week of Month") + ylab("Region")
+heatmap = ggplot( dat.melt, aes(monthweek, region, fill=region , alpha=value ) ) +
+          geom_tile(colour="white") + 
+          ylim(rev(levels(dat.melt$region))) + # reverse region order to match legend
+          facet_grid( year ~ monthf) +
+          labs(title = "Refugee Arrivals") +  
+          xlab("Week of Month") + 
+          ylab("Region") 
+heatmap
+
+# table of results
+x.tab = xtabs(as.numeric(value) ~ year + region, data=dat.melt) 
+# x.tab
+
+xt = xtable(x.tab, caption ="Table of Refugee Arrivals by Region of Origin", 
+       label ="Region-Table", digits=0)
+print(xt, caption.loc = "top")
+@
+\FloatBarrier 
+
+\subsection{Immigrants with Class B Conditions by Nationality}
+<<'UnfoldingTB', eval=FALSE>>=
+@
+\FloatBarrier 
+
+\subsection{state locations}
+
+\subsection{secondary migration}
+
+\subsection{LTBI rates among children (B2) and adults (follow-up exams of B1s)}
+
+\subsection{TB prevalence by age-group, by visa type, with annual percent change}
+- (note from RR) 'It seems to me that the 2.9 perc annual rate of infection estimated from the Vietnamese applicants would make most of the TB  infections more than 2 yrs remote, except in the very young. Refugees might be in a totally different situation.' 
+
+\subsection{The proportion of refugees that adjust status}
+—the proportion of refugees that adjust status and therefore have completed vx—by ethnicity, age, etc.
+
+\newpage
+%%%%%%%% THIS YEAR
+\section{Year to Date}
+\FloatBarrier
+
+\subsection{EDN Notifications by Country of Origin}
+<<'incoming-map-data', eval=TRUE>>=
+startTime = date()
+
+# Read EDN Geocode 
+library(RODBC)  # need to be using 32-bit version of R for this to work with CDC's 32-bit version of office
+edn.con = odbcConnectAccess2007("//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/EDN geocode.accdb")
+
+# Set date range:
+
+qry = "SELECT * FROM Table1 WHERE (((DateDiff('d',[ArrivalDate],Date()))<=365) 
+      AND ((Table1.Status)='OK') AND ((Table1.Country) Is Not Null))"
+edn = sqlQuery( edn.con, qry)
+odbcCloseAll()
+
+# Adresses are the final destination.  Will need to add starting points
+
+# rename country to country.code
+colnames(edn)[14]<-"country.code"
+
+# Get avg lat-long for source countries !Only need to download once. ----
+# library(XML)
+# url ="http://www.maxmind.com/app/country_latlon"  # has lat-long for each country, by iso code
+#   iso = read.csv("c:/Users/bzp3/desktop/R/Maps/iso3166countries.txt", as.is=T) # don't convert values to factors
+#   # convert 1st column to country
+#   colnames(iso)[1] <- "ISO2"
+#   colnames(iso)[2] <- "CountryLat"
+#   colnames(iso)[3] <- "CountryLong"
+#   # convert <NA> to NA, row 155
+#   iso[155,1] <- "NA"
+# 
+# # join with list of FIPS codes (used by EDN)  
+#   url ="http://cloford.com/resources/codes/index.htm" 
+# Copy and paste table into notepad
+fips = read.delim(file="C:/Users/bzp3/Desktop/R/Maps/fips-iso-codes.txt", 
+                      header=TRUE, sep="\t", fill = TRUE, comment.char="")
+#   colnames(fips)[6] <- "ISO2"
+#   fips[fips$FIPS=="CF", "FIPS"] <- "CG"  # EDN for Rep of Congo is CG not CF
+# # merge
+#   country.lat.long = merge(iso, fips, by="ISO2")
+# 
+# # save
+# save(country.lat.long,file="country.lat.long.RData")  
+load("country.lat.long.RData")
+
+# Get avg lat-long for states !Only need to download once. ----
+library(rgdal)
+library(maptools) 
+library(PBSmapping)
+
+# Get centroid for each states  
+# from http://nationalatlas.gov/atlasftp.html#statep0
+states.shp <- importShapefile("C:/Users/bzp3/Desktop/R/Maps/US/statesp020.shp")
+# !!!! Can also get centroid with sp::coordinates() function
+states.centroid <- calcCentroid (states.shp, rollup = 2)
+
+# setup state fips code with centroids
+states.shp$fips = as.numeric(as.character(states.shp$STATE_FIPS))
+library(maps)
+data(state.fips) # state fips codes from maps package
+
+
+
+#  Insert lat/long data for place of origin ----
+  incoming = merge(edn, country.lat.long, by.x="country.code", by.y="FIPS")
+# check for unmatched country codes
+#   unmatched = merge(edn, country.lat.long, by.x="country.code", by.y="FIPS", all=TRUE )
+#   missing = as.data.frame(table( unmatched[is.na(unmatched$CountryLat), "Country"] ))
+#   missing
+
+#  Insert lat/long data for destination state ----
+ incoming = merge(incoming, states.centroid, by.x="state", by.y="STATE_FIPS")
+
+#rename country lat long to StartLat, StartLong
+names(incoming)[names(incoming)=="CountryLat"] = "StartLat"
+names(incoming)[names(incoming)=="CountryLong"] = "StartLong"
+
+# # When notification is secondary migration, replace StartLat StartLong with values from scnd.migration table
+# incoming = merge(incoming, scnd, by.x="AddressID", by.y="AddressID", all.x=TRUE )
+# Assign stating points
+# incoming$StartLat = ifelse(!is.na(incoming$Latitude.1), incoming$Latitude.1, incoming$StartLat)          
+# incoming$StartLong = ifelse(!is.na(incoming$Longitude.1), incoming$Longitude.1, incoming$StartLong) 
+
+save(incoming, file="incoming.rda")
+
+# List of incoming countries
+t = as.data.frame(table(incoming$Country))
+# limit to countries with > 1 
+t = t[t$Freq>0,]
+names(t) = c("Country", "Notifications")
+t = t[rev(order(t$Notifications)),]
+rownames(t) = 1:nrow(t)  # sets rownames to order of entry
+t$Notifications = format(t$Notifications , big.mark=",")
+
+library(xtable)
+xt = xtable(t[1:20,], caption="Top 20 notifications by Country of Origin")
+print(xt, caption.loc="top")
+
 @
 
-\item Immigrants with Class B Conditions
-<<incoming-refugees>>=
-require(knitr)
-read_chunk("DNA TB class.R")
+
+<<'incoming-map-routes', eval=FALSE>>=     
+load("incoming.rda")
+
+# data frame with key attributes aggregated by country and destination state
+library(plyr)
+countryToState = mutate(data = incoming, .(Country, State, StartLong, StartLat),
+                        count = nrow(),
+                        
+                        )
+                        
+
+# calculate routes -
+library(geosphere)
+rts <- gcIntermediate( incoming[,c('StartLong', 'StartLat')], 
+                       incoming[,c('Longitude', 'Latitude')], 
+                       30, breakAtDateLine=FALSE, addStartEnd=TRUE, sp=TRUE) 
+#- Dateline Break FALSE, 
+# otherwise we get a bump in the shifted ggplots----
+
+# trying to avoid ggplot....bceasue it is slow (jp jan 2013)
+# require(ggplot2)
+# source ("fortify-spatial.r")
+# rts.ff <- fortify.SpatialLinesDataFrame(rts) # convert into something ggplot can plot
+
+incoming$id <-as.character(c(1:nrow(incoming))) # that rts.ff$id is a char
+
+# join attributes, we keep them all, just in case
+# gcircles <- merge(rts.ff, incoming, all.x=T, by="id") # ggplot
+gcircles <- merge(rts, incoming, all.x=T, by="id") 
+
+# remove unneeded objects
+rm(rts, rts.ff, incoming)
+save(gcircles, file="gcircles.RData")
+stoptime = date()
 @
 
-<<UnfoldingTB>>=
+Map of EDN arrivals from DATE! to DATE@ ...Width of line is proportional to the number of arrivals
+
+<<'recalculate-map-data', fig.cap='Map of EDN Arrivals', eval=FALSE>>=
+########################## Run this when updating the map...it takes a very long time.... 
+### Functions to regroup split lines and polygons when recentering 
+# takes dataframe, column with long and unique group variable, returns df with added column named group.regroup
+RegroupElements <- function(df, longcol, idcol){  
+  browser
+  g <- rep(1, length(df[,longcol]))
+  if (diff(range(df[,longcol])) > 300) {          # check if longitude within group differs more than 300 deg, ie if element was split
+    d <- df[,longcol] > mean(range(df[,longcol])) # we use the mean to help us separate the extreme values
+    g[!d] <- 1     # some marker for parts that stay in place (we cheat here a little, as we do not take into account concave polygons)
+    g[d] <- 2      # parts that are moved
+  }
+  g <-  paste(df[, idcol], g, sep=".") # attach to id to create unique group variable for the dataset
+  df$group.regroup <- g
+  df
+}
+
+### Function to close regrouped polygons
+# takes dataframe, checks if 1st and last longitude value are the same, if not, inserts first as last and reassigns order variable
+ClosePolygons <- function(df, longcol, ordercol){
+  if (df[1,longcol] != df[nrow(df),longcol]) {
+    tmp <- df[1,]
+    df <- rbind(df,tmp)
+  }
+  o <- c(1: nrow(df))  # rassign the order variable
+  df[,ordercol] <- o
+  df
+}
+
+# Recenter data ----
+  load("gcircles.RData")
+  center <- 275 # positive values only - US centered view is 260
+
+# shift coordinates to recenter great circles
+  gcircles$long.recenter <-  ifelse(gcircles$long  < center - 180 , gcircles$long + 360, gcircles$long) 
+
+# now regroup lines
+  library(plyr)
+  gcircles.rg <- ddply(gcircles, .(id), RegroupElements, "long.recenter", "id")  # reallly reallly long function.....
+  save(gcircles.rg, file="gcircles.rg.RData")
+
+# Recenter maps  !Only needs to be done once. 
+# require(maps)
+# worldmap <- map_data ("world")
+# states <- map_data("state")
+# # shift coordinates to recenter worldmap
+# worldmap$long.recenter <-  ifelse(worldmap$long  < center - 180 , worldmap$long + 360, worldmap$long)
+# states$long.recenter <- ifelse(states$long  < center - 180 , states$long + 360, states$long)
+# # recenter and close polys
+# worldmap.rg <- ddply(worldmap, .(group), RegroupElements, "long.recenter", "group")
+# states.rg <- ddply(states, .(group), RegroupElements, "long.recenter", "group")
+# worldmap.cp <- ddply(worldmap.rg, .(group.regroup), ClosePolygons, "long.recenter", "order")  # use the new grouping var
+# save(worldmap.cp, file="worldmap.cp.RData")
+# states.cp <- ddply(states.rg, .(group.regroup), ClosePolygons, "long.recenter", "order")  # use the new grouping var
+# save(states.cp, file="states.cp.RData")
+
 @
 
-\item state locations
+<<'plot-map', cache=TRUE, fig.cap='Map of EDN Arrivals'>>=
+#### retreive map data ----
+load("worldmap.cp.RData")
+load("states.cp.RData")
+load("gcircles.rg.RData")
 
-\item secondary migration
+# plot ----
+plotStartTime = date()
+require(ggplot2)
+g= ggplot() +
+  theme(panel.background = element_rect(fill='grey95',colour='grey95')) + 
+  geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="#f9f9f9", colour = "grey", data=worldmap.cp) +
+  geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="White", colour = "grey35", alpha=.1, data=states.cp) +  
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank(),  
+       axis.ticks = element_blank(), 
+       axis.title.x = element_blank(), axis.title.y = element_blank(), 
+       axis.text.x = element_blank(), axis.text.y = element_blank()
+       , legend.position = "none"
+       ) +
+  ylim(-60, 90) +
+  coord_equal()
 
-\item ltbi rates among children (B2) and adults (follow-up exams of B1s)
+routes = geom_line(aes(long.recenter,lat, 
+                       group=group.regroup, 
+                       colour=AlienType, 
+                       type=Class), 
+                   alpha=.1, 
+                   lineend="round", 
+                   lwd=.1, 
+                   data= gcircles.rg  
+                   )  
+g + routes
 
-\item TB prevalence by age-group, by visa type, with annual percent change
-- It seems to me that the 2.9 perc annual rate of infection estimated from the Vietnamese applicants would make most of the TB  infections more than 2 yrs remote, except in the very young. Refugees might be in a totally different situation. 
+#  How long did it take to run? ----
+plotStopTime = date()
+# plotStartTime
+# plotStopTime
+@
+\FloatBarrier
 
-\item the proportion of refugees that adjust status—and therefore have completed vx—by ethnicity, age, etc.
-\end{enumerate}
+\subsection{Daily Refugee Arrivals}
+\FloatBarrier
 
-\section{The most recent 12 months}
-
-
-
+\newpage
+%%%%%%%% SPECIAL VIEWS
 \section{Special views of data}
 
 - Percent class b, by country
-<<PercentClassBArrived, cache=FALSE>>=
-read_chunk("C:/Users/bzp3/Desktop/Linkage/PhData/PercentClassBArrived.R")
+<<'PercentClassBArrived', cache=FALSE, eval=FALSE>>=
+read_chunk("C:/Users/bzp3/Desktop/Analysis/Linkage/PhData/PercentClassBArrived.R")
 @
 
 - linkage project--time to TB diagnosis
@@ -163,12 +557,13 @@ read_chunk("C:/Users/bzp3/Desktop/Linkage/PhData/PercentClassBArrived.R")
 
 
 \section{Computing Environment}
-
 The R session information (including the OS info, R version and all
 packages used):
-<<session-info, cache=FALSE>>=
+<<'session-info', cache=FALSE, results='markup'>>=
 sessionInfo()
 Sys.time()
 @
 
 \end{document}
+
+

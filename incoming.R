@@ -1,34 +1,50 @@
 # Incoming!
+startTime = date()
 
-# Read EDN Geocode----
+# Read EDN Geocode ----
 library(RODBC)
 edn.con = odbcConnectAccess2007("c:/Users/bzp3/desktop/EDN geocode.accdb")
-# all geocoded address.  Adresses are the final destination.  Will need to add starting points
-# select most recent 1,000 records
-edn = sqlQuery( edn.con, "Select * From Table1 where Status = 'OK' and now() - ArrivalDate <30 and Country is not null")
+# Adresses are the final destination.  Will need to add starting points
+qry = "SELECT * FROM Table1 WHERE (((DateDiff('d',[ArrivalDate],Date()))<=31) 
+      AND ((Table1.Status)='OK') AND ((Table1.Country) Is Not Null))"
+edn = sqlQuery( edn.con, qry)
 # all those that are updates after arrrival
 scnd.migration = sqlQuery( edn.con, "SELECT * from SecondaryMigration")
 scnd = subset(scnd.migration,, c(AddressID, Latitude.1, Longitude.1)) # columns need to assign start point
 
-# Get avg lat-long for countries
-# library(XML)
-# url ="http://www.maxmind.com/app/country_latlon"
-#   iso3166countries = read.csv("c:/Users/bzp3/desktop/R/Maps/iso3166countries.txt", as.is=T) # don't convert values to factors
-#   iso3166countries[155,]
-#   # convert 1st column to country
-#   colnames(iso3166countries)[1] <- "Country"
-#   colnames(iso3166countries)[2] <- "CountryLat"
-#   colnames(iso3166countries)[3] <- "CountryLong"
-#   # convert <NA> to NA, row 155
-#   iso3166countries[155,1] <- "NA"
-#   # convert to data.table
-#   # iso3166countries = data.table(iso3166countries)
-#   # save
-#   save(iso3166countries,file="iso3166countries.RData")
-load("iso3166countries.RData")
+# Get avg lat-long for source countries ----
+library(XML)
+url ="http://www.maxmind.com/app/country_latlon"  # has lat-long for each country, by iso code
+  iso = read.csv("c:/Users/bzp3/desktop/R/Maps/iso3166countries.txt", as.is=T) # don't convert values to factors
+  # convert 1st column to country
+  colnames(iso)[1] <- "ISO2"
+  colnames(iso)[2] <- "CountryLat"
+  colnames(iso)[3] <- "CountryLong"
+  # convert <NA> to NA, row 155
+  iso[155,1] <- "NA"
 
-# join with edn data
-incoming = merge(edn, iso3166countries, by="Country" )
+# join with list of FIPS codes (used by EDN)  
+  url ="http://cloford.com/resources/codes/index.htm" # Copy and paste table into notepad
+  fips = read.delim(file="C:/Users/bzp3/Desktop/R/Maps/fips-iso-codes.txt", header=TRUE, sep="\t", fill = TRUE, comment.char="")
+  colnames(fips)[6] <- "ISO2"
+  fips[fips$FIPS=="CF", "FIPS"] <- "CG"  # EDN for Rep of Congo is CG not CF
+# merge
+  country.lat.long = merge(iso, fips, by="ISO2")
+# save
+save(country.lat.long,file="country.lat.long.RData")  
+
+# join with edn data, find unmatched, edit iso values, then remerge
+  incoming = merge(edn, country.lat.long, by.x="Country", by.y="FIPS")
+  unmatched = merge(edn, country.lat.long, by.x="Country", by.y="FIPS", all=TRUE )
+  missing = as.data.frame(table( unmatched[is.na(unmatched$CountryLat), "Country"] ))
+  missing
+ 
+
+#  Insert lat/long data for place of origin ----
+load("country.lat.long.RData")
+# join with edn data, find unmatched, edit iso values, then remerge
+incoming = merge(edn, country.lat.long, by.x="Country", by.y="FIPS")
+
 # List of incoming countries
 table(incoming$Country)
 #rename country lat long to StartLat, StartLong
@@ -44,7 +60,7 @@ incoming$StartLong = ifelse(!is.na(incoming$Longitude.1), incoming$Longitude.1, 
 # calculate routes -- Dateline Break FALSE, otherwise we get a bump in the shifted ggplots----
 library(geosphere)
 rts <- gcIntermediate( incoming[,c('StartLong', 'StartLat')], incoming[,c('Longitude', 'Latitude')], 
-                       100, breakAtDateLine=FALSE, addStartEnd=TRUE, sp=TRUE) 
+                       50, breakAtDateLine=FALSE, addStartEnd=TRUE, sp=TRUE) 
 require(ggplot2)
 source ("fortify-spatial.r")
 rts.ff <- fortify.SpatialLinesDataFrame(rts) # convert into something ggplot can plot
@@ -109,7 +125,7 @@ save(worldmap.cp, file="worldmap.cp.RData")
 states.cp <- ddply(states.rg, .(group.regroup), ClosePolygons, "long.recenter", "order")  # use the new grouping var
 save(states.cp, file="states.cp.RData")
 
-#### retreive map data
+#### retreive map data ----
 load("worldmap.cp.RData")
 load("states.cp.RData")
 load("gcircles.rg.RData")
@@ -117,10 +133,10 @@ load("gcircles.rg.RData")
 # plot----
 require(ggplot2)
 g= ggplot() +
-  geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="#f9f9f9", colour = "grey5", data=worldmap.cp) +
-  geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="White", colour = "black", alpha=.1, data=states.cp) +  
-  opts(panel.background = theme_blank(), 
-       panel.grid.minor = theme_blank(), panel.grid.major = theme_blank(),  
+  opts(panel.background = theme_rect(fill='grey95',colour='grey95')) + 
+  geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="#f9f9f9", colour = "grey", data=worldmap.cp) +
+  geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="White", colour = "grey35", alpha=.1, data=states.cp) +  
+  opts(panel.grid.minor = theme_blank(), panel.grid.major = theme_blank(),  
        axis.ticks = theme_blank(), 
        axis.title.x = theme_blank(), axis.title.y = theme_blank(), 
        axis.text.x = theme_blank(), axis.text.y = theme_blank()
@@ -132,67 +148,98 @@ g= ggplot() +
 routes = geom_line(aes(long.recenter,lat, group=group.regroup, colour=Country, type=Class), alpha=0.1, lineend="round",lwd=0.1, 
                    data= gcircles.rg)
 g + routes
-#   scale_colour_gradient(low="#fafafa", high="#EE0000") +  
-ggsave("Incoming.pdf", width=8, height=6, dpi=300)
-ggsave("Incoming.svg")
 
-# Zoom into US
+# Save ----
+ggsave("Incoming.pdf", width=8, height=6, dpi=300)
+# ggsave("images/Incoming.png", width=4, height=3)
+# ggsave("Incoming.svg")
+
+# Zoom into US ----
 g + routes + ylim(10, 55) + xlim(230, 310)
 
-# view secondary migration
+# Save zoom  
+ggsave("images/Incoming-zoom.pdf", width=8, height=6,  dpi=300)
+
+# Secondary migration ----
 secondary = geom_line(aes(long.recenter,lat, group=group.regroup, colour=Class, alpha=Class), lineend="round",lwd=0.2, 
                       data= gcircles.rg[!is.na(gcircles.rg$Latitude.1),])
 zoom = g + ylim(12, 80) + xlim(175, 310)
 zoom + secondary + ylim(12, 80) + xlim(175, 310)
 
-#### save images and convert them to a single GIF
+# Save secondary zoom 
+ggsave("images/Incoming-secondary.pdf", width=8, height=6,  dpi=300)
+
+#### Animate daily arrivals ----
 library(animation)
 library(caTools)
 library(lubridate)
 
 # create factor for dates
-gcircles.rg$day = factor(day(gcircles.rg$ArrivalDate))
+    # gcircles.rg$day = factor(day(gcircles.rg$ArrivalDate))
+gcircles.rg$day = factor(gcircles.rg$ArrivalDate)
 
-# Function to plot arrivals on same day (need to add month...)
+# Function to plot arrivals per day ----
+library(RColorBrewer)
 plots = function(.id){
-    g + geom_line( aes(long.recenter, lat, group=group.regroup, colour=Country, alpha=Country), 
-                          lineend="round",lwd=0.3, 
-                          data= subset( gcircles.rg, as.numeric(day)==.id ) )
+  date= as.Date(levels(gcircles.rg$day)[.id]) ;
+  text=format(date, "%A, %b %d, %Y") ;
+  country.freq = names(sort(table(gcircles.rg$Country), decreasing = TRUE)) ; # list countries in descending order of arrivals
+  myColors <-  rbind(brewer.pal(8,"Set1"), brewer.pal(8,"Dark2"),  brewer.pal(8,"Accent"), brewer.pal(8,"Set2"),
+                     brewer.pal(8,"Pastel1"), brewer.pal(8,"Pastel2"), brewer.pal(8,"Pastel2"), brewer.pal(8,"Pastel2"), 
+                     brewer.pal(8,"Pastel2"), brewer.pal(8,"Pastel2"),brewer.pal(8,"Pastel2"),brewer.pal(8,"Pastel2") ) ;
+  names(myColors) <- country.freq ;
+  colScale <- scale_colour_manual(name="Country", values = myColors) ;
+  g + 
+  geom_line( aes(long.recenter, lat, group=group.regroup, colour=Country, alpha=1 ), 
+                 lineend="round",lwd=0.3, 
+                 data= subset( gcircles.rg, as.numeric(day)==.id ) ) +
+  opts( title=text ) +
+  colScale
 }
 
-#### HTML movie
-oopt = ani.options(interval = 0.2, nmax = 50, ani.dev = png, ani.type = "png",
-                   ani.height = 350, ani.width = 500,
-                   title = "Demonstration of Polygons with Gradient Colors",
-                   description = "The graph actually consists of a series of polygons, 
-    each with a redder color starting from yellow.")
-ani.start()
-opar = par(mar = c(3, 3, 1, 0.5), mgp = c(2, .5, 0), tcl = -0.3,
-           cex.axis = 0.8, cex.lab = 0.8, cex.main = 1)
+# PDF movie ----
+saveLatex({
+  for (i in 1:nlevels(gcircles.rg$day) )  {
+    print( plots(i)) 
+  }
+}, img.name = "in", 
+  ani.opts = "controls, loop", 
+  latex.filename = "incoming.tex" , 
+  install.animate = TRUE,
+  overwrite = TRUE, 
+  interval = 0.5, 
+  ani.dev = "pdf",
+  ani.type = "pdf",
+  ani.width = 9,
+  ani.height = 6.5, 
+  documentclass = "\\documentclass{article}\n\\usepackage[papersize={11in,8.5in},margin=1in]{geometry}"
+)
 
+#  How long? ----
+stopTime = date()
+startTime
+stopTime
 
-saveMovie({
-    for (i in nrow(nlevels(gcircles.rg$day)))  {
-      print( plots(i))
-      } 
-    }, movie.name = "incoming.gif", clean = T, 
-          interval = 0.1, ani.width = 600, ani.height = 600, ani.options("convert") )
-      
+# These movies are not as good, 
+## but may be used if Latex is not installed (the add-on program that is used to make pdf movie)
 
-##  map code from from spatial analysis----
-# This step removes the axes labels etc when called in the plot.
-xquiet<- scale_x_continuous("", breaks=NULL)
-yquiet<-scale_y_continuous("", breaks=NULL, limits=c(-60, 90))
-opts <- opts(panel.background = theme_rect(fill='grey',colour='grey'))
-quiet<-list(xquiet, yquiet, opts)
+#### HTML movie----
+saveHTML({
+  ani.options(interval = 1 , nmax = 30, outdir = getwd())
+  for (i in 1:nlevels(gcircles.rg$day))  {
+    print( plots(i))
+    }
+    },  outdir = getwd(), img.name = "incoming-movie", 
+         title = "EDN: Incoming, June 2012", 
+         description = "each line is a new arrival")
+dev.off() 
 
-# Create a base plot
-base<- ggplot(worldmap, aes(x = long, y = lat))
+### GIF movie ----
+saveGIF({
+  ani.options(nmax = 30, outdir = getwd())
+  for (i in 1:nlevels(gcircles.rg$day))  {
+    print( plots(i))
+  }
+},interval = 0.5, movie.name = "incoming.gif", 
+        ani.width = 600, ani.height = 600)
 
-# Then build up the layers
-wrld<-c(geom_polygon(aes(long,lat,group=group), size = 0.1, colour= "grey", fill="white", alpha=1, data=worldmap))
-# urb<- c(geom_polygon(aes(long,lat,group=group), size = 0.1, colour= "#FCFFF1", fill="#FCFFF1", alpha=1, data=urbanareas))
-
-# Bring it all together with the great circles
-base + WorldMap + coord_equal()+ quiet +
-geom_path(data=gcircles, aes(long,lat, group=group, colour=Status),alpha=0.1, lineend="round",lwd=0.1)

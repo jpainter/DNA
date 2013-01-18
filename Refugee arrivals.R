@@ -43,6 +43,12 @@ require(scales)
 # change Dem. Rep Congo to DRC
 refugees.sum[refugees.sum$country=="Dem. Rep. Congo", c("country")] = "DRC"
 
+# Set levels for years--include one extra year.
+refugees.sum$year = as.numeric(refugees.sum$year) # convert year to numeric variable 
+minyear = min(refugees.sum$year)
+maxyear = max(refugees.sum$year) + 1
+year.range = minyear:maxyear
+
 # data set of the last observation (for points and/or labels)
 last.point = ddply(refugees.sum, .(country), function(x) x[c(nrow(x)),])
 
@@ -51,8 +57,11 @@ p = ggplot( data=refugees.sum, aes(x=year, y=total, group=country)) +
       geom_line(size=.75, colour="grey") +
       geom_point(data = last.point , aes(x=year, y=total), size=4, colour="grey") +
       geom_text(data = last.point, aes(label = country), hjust = .5, vjust = -.5 , size=4) +
-      opts(title="Unfolding Refuge Resettlement:\nCumulative Refugee Arrivals Since 2003 by Nationality (>500 arrivals per year)") 
-p+ scale_y_continuous( "Refugee Arrivals\n", breaks= seq(0, 100000, 10000), labels=comma(seq(0, 100000, 10000)))
+      scale_y_continuous( "Refugee Arrivals\n", breaks= seq(0, 100000, 10000), labels=comma(seq(0, 100000, 10000))) +
+      scale_x_continuous( "Year", breaks=year.range, limits=c(1997,2013) ) + 
+      opts(title="Unfolding Refuge Resettlement:\nCumulative Arrivals Since 1997, by Nationality (minimum 500 arrivals per year)") 
+p
       
-
-ggsave("refugee arrival cumsum.pdf", width=8, height=6)
+#ggsave("images/refugee-arrival-cumsum.svg")
+#ggsave("images/refugee-arrival-cumsum.png", width=8, height=6)
+ggsave("images/refugee-arrival-cumsum.pdf", width=8, height=6)
