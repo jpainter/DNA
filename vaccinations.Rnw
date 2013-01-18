@@ -1,0 +1,84 @@
+\documentclass{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace} %for Hmisc::describe
+\usepackage{relsize}  %for Hmisc::describe
+\usepackage[section, above]{placeins}  %% keeps output from floating into adjoining sections
+\usepackage{fixltx2e}
+\usepackage{booktabs} % for table formatting
+
+<<'setup', echo=FALSE , message=FALSE, cache=FALSE>>=
+opts_chunk$set( echo=FALSE,  cache=TRUE ,
+                fig.align='center', fig.show='hold', fig.width=6, fig.height=4,
+                fig.path='images/', fig.align='center',
+                message=FALSE, comment="", tidy=TRUE, results='asis')
+options(replace.assign=TRUE,width=90)
+if (!exists('.title')) .title = 'Immigrant, Refugee, and Migrant Health Branch'
+if (!exists('.author')) .author = Sys.info()['user']
+@
+<<'title', echo=FALSE, results=hide, message=FALSE, cache=FALSE>>=
+.title= 'Expanded Vaccination Program for Refugees'
+.author = 'Epidemiology Team'
+@
+
+\begin{document}
+\title{\Sexpr{.title}}
+\author{\Sexpr{.author}%
+\thanks{Epidemiology Team: John Painter (lead), Kendra Cuffe, Sasi Jonnalagadda, Yecai Liu, Rossanne Philen, Zanju Wang, Meghan Weems; EDN developers: Yoni Haber (lead), Wei-Lun Juang, Charles Miller, Daniel Wenger; and EDN data entry center: Nekiea Gray (lead)%
+}}
+
+\maketitle
+\tableofcontents  % inserts 'Table of contents' 
+
+\section{Background}
+through efforts of CDC, IOM, and PRM, vaccination of refugees from five countries have been expanded.  The countries (primary nationalities) are: Ethiopia (Somali, Eritrean), Kenya (Somali, Ethiopian, Sudanese), Malaysia (Burmese), Nepal (Bhutanese), and Thailand (Burmese). This report provides details of the vaccination coverage for refugees from these five countries during calendar year 2012.
+
+\section{Refugee Resettlement}
+<<'incoming-refugees-nationality', fig.height=3, fig.width=7, fig.cap='Refugee resettlement for countries participating in expanded vaccination program', cache=TRUE>>=
+source("refugeeArrivals.function.R")
+
+refugeeArrivals(country=c("Ethiopia","Kenya","Nepal","Malaysia","Thailand"), date="September 1 2012")
+
+@
+
+\section{Vaccine Coverage}
+<<"load data">>=
+library(XLConnect)
+wb <- loadWorkbook("//cdc/project/ccid_ncpdcid_dgmq/IRMH/DNA/DNAdevelopment_vaccinations.xlsx")
+pop <- readWorksheet(wb, sheet = "Population", startRow=6, startCol=1, header = TRUE)
+vx <- readWorksheet(wb, sheet = "Vx", startRow=6, startCol=1, header = TRUE)
+@
+
+\subsection{Africa}
+
+<<"ethiopia">>=
+ethiopia.pop = pop[which(pop$Country.Name == "ETHIOPIA"), 2:8]
+ethiopia.vx = vx[which(vx$Country.Name == "ETHIOPIA"), 2:9]
+t = ethiopia.vx
+
+library(xtable)
+cols.comma = 3:8  # identify columns that need commas for thousands
+t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
+ 
+print(xtable(t, caption = "Vaccination History, Ethiopia, 2012", digits=0 ) ,
+      caption.placement='top', row.names=FALSE)
+
+# print(xtable(ethiopia.vx, caption = "Vaccination History, Ethiopia, 2012", caption.placement='top'))
+@
+
+\subsection{Asia}
+<<"thailand">>=
+thailand.pop = pop[which(pop$Country.Name == "THAILAND"), 2:8]
+thailand.vx = vx[which(vx$Country.Name == "THAILAND"), 2:9]
+t = thailand.vx
+
+library(xtable)
+cols.comma = 3:8  # identify columns that need commas for thousands
+t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
+ 
+print(xtable(t, caption = "Vaccination History, Thailand, 2012", digits=0 ) ,
+      caption.placement='top', row.names=FALSE)
+@
+\end{document}
+
+

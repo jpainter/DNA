@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <link rel="stylesheet" type="text/css" media="screen, projection, print"
+    href="http://www.w3.org/Talks/Tools/Slidy2/styles/slidy.css" />
+  <script src="http://www.w3.org/Talks/Tools/Slidy2/scripts/slidy.js.gz"
+    charset="utf-8" type="text/javascript"></script>
+</head>
+<body>
+<div class="section slide level1" id="r">
+<h1>R</h1>
+<p>Programming Literate and Reproducible Research</p>
+<p>John Painter</p>
+</div>
+<div class="section slide level1" id="visualizating-data">
+<h1>Visualizating Data</h1>
+<ul class="incremental">
+<li>The larger the data, the greater the need to see it in pictures</li>
+<li>Challenge to visualize data with ‘traditional’ software</li>
+<li>SAS has limited options</li>
+<li>Excel poor choice for data management</li>
+<li>Propriatary software expensive (ArcGis) and limited (ArcGis=maps only)</li>
+<li>Some of best visualizations done by newer (and cheaper) software</li>
+</ul>
+</div>
+<div class="section slide level1" id="new-york-times">
+<h1>New York Times</h1>
+<ul class="incremental">
+<li><p>The staff of New York Times info graphics department is…<a href="http://vimeo.com/21020824">video please</a></p></li>
+<li><p>NYT <a href="http://chartsnthings.tumblr.com/">blog</a> about how they brainstorm and design effective graphics</p></li>
+<li><p>Former intern has popular book and web-site on visualizations, <a href="http://flowingdata.com/">Flowing Data</a></p></li>
+<li><p>Basic workflow is <a href="http://www.r-project.org/">R</a> for data and chart, Adobe for post chart clean up, and convert to <a href="http://d3js.org/">D3 (d3js.org)</a> for interactive, web-based version</p></li>
+</ul>
+</div>
+<div class="section slide level1" id="r-is">
+<h1>R is</h1>
+<ul class="incremental">
+<li>Free</li>
+<li>More advanced than SAS, STATA, et al.</li>
+<li>Better visualizations</li>
+<li>Better for large data sets (CERN)</li>
+</ul>
+</div>
+<div class="section slide level1" id="free">
+<h1>Free</h1>
+<ul class="incremental">
+<li>IBM wrote first code, “S”, and published it for anyone to use</li>
+<li>S-plus licensed a version</li>
+<li>Two guys in NZ (Ross I. and Robert G.) published a free version, “R”</li>
+<li>Add-on code downloaded as needed from 87 reposisitories (17 in US)</li>
+<li><a href="http://rstudio.org/">RStudio (rstudio.org)</a> for <a href="http://www.r-project.org/">R (r-project.org)</a> provides GUI for organizing projects, files, and plots</li>
+</ul>
+</div>
+<div class="section slide level1" id="advanced">
+<h1>Advanced</h1>
+<ul class="incremental">
+<li>Around 3,500 specialized packages</li>
+<li>Authors are stats profressors, engineers, end-users</li>
+<li>Becoming a primary software for academic biostatistics, like <a href="http://biostat.mc.vanderbilt.edu/wiki/Main/RS">Vanderbilt</a></li>
+</ul>
+</div>
+<div class="section slide level1" id="visualizations">
+<h1>Visualizations</h1>
+<ul class="incremental">
+<li>Wilkinson and Tufte</li>
+<li>‘Grammar of Graphics’</li>
+<li>Examples online are motivational</li>
+<li><a href="http://www.nytimes.com/interactive/2012/05/05/sports/baseball/mariano-rivera-and-his-peers.html?ref=baseball">Mariano Rivera’s saves</a></li>
+<li><a href="http://spatialanalysis.co.uk/2012/03/mapped-british-shipping-1750-1800/">Maritime trade routes</a></li>
+<li><a href="http://spatialanalysis.co.uk/2012/02/great-maps-ggplot2/">London cycle journey</a></li>
+<li><a href="http://hint.fm/wind/">Wind patterns</a></li>
+</ul>
+</div>
+<div class="section slide level1" id="googlemaps-from-r-data">
+<h1>GoogleMaps from R data</h1>
+<h2 id="the-map-below-is-an-example-of-how-to-send-data-through-google-and-get-a-dynamic-map-back.-note-need-internet-connection-to-get-map-a-disadvantage-compared-with-d3-interactive-images">The map below is an example of how to send data through google and get a dynamic map back. Note: need internet connection to get map (a disadvantage compared with D3 interactive images)</h2>
+<div class="warning"><pre class="knitr">## Warning: package 'googleVis' was built under R version 2.15.1
+</pre></div><!-- GeoMap generated in R 2.15.0 by googleVis 0.2.16 package -->
+<!-- Fri Jul 06 04:33:20 2012 -->
+
+
+<!-- jsHeader -->
+<script type="text/javascript" src="http://www.google.com/jsapi">
+</script>
+<script type="text/javascript">
+
+// jsData 
+function gvisDataGeoMapID67c2332783b ()
+{
+  var data = new google.visualization.DataTable();
+  var datajson =
+[
+ [
+ "Alabama",
+        2.1 
+],
+[
+ "Alaska",
+        1.5 
+],
+[
+ "Arizona",
+        1.8 
+],
+[
+ "Arkansas",
+        1.9 
+],
+[
+ "California",
+        1.1 
+],
+[
+ "Colorado",
+        0.7 
+],
+[
+ "Connecticut",
+        1.1 
+],
+[
+ "Delaware",
+        0.9 
+],
+[
+ "Florida",
+        1.3 
+],
+[
+ "Georgia",
+          2 
+],
+[
+ "Hawaii",
+        1.9 
+],
+[
+ "Idaho",
+        0.6 
+],
+[
+ "Illinois",
+        0.9 
+],
+[
+ "Indiana",
+        0.7 
+],
+[
+ "Iowa",
+        0.5 
+],
+[
+ "Kansas",
+        0.6 
+],
+[
+ "Kentucky",
+        1.6 
+],
+[
+ "Louisiana",
+        2.8 
+],
+[
+ "Maine",
+        0.7 
+],
+[
+ "Maryland",
+        0.9 
+],
+[
+ "Massachusetts",
+        1.1 
+],
+[
+ "Michigan",
+        0.9 
+],
+[
+ "Minnesota",
+        0.6 
+],
+[
+ "Mississippi",
+        2.4 
+],
+[
+ "Missouri",
+        0.8 
+],
+[
+ "Montana",
+        0.6 
+],
+[
+ "Nebraska",
+        0.6 
+],
+[
+ "Nevada",
+        0.5 
+],
+[
+ "New Hampshire",
+        0.7 
+],
+[
+ "New Jersey",
+        1.1 
+],
+[
+ "New Mexico",
+        2.2 
+],
+[
+ "New York",
+        1.4 
+],
+[
+ "North Carolina",
+        1.8 
+],
+[
+ "North Dakota",
+        0.8 
+],
+[
+ "Ohio",
+        0.8 
+],
+[
+ "Oklahoma",
+        1.1 
+],
+[
+ "Oregon",
+        0.6 
+],
+[
+ "Pennsylvania",
+          1 
+],
+[
+ "Rhode Island",
+        1.3 
+],
+[
+ "South Carolina",
+        2.3 
+],
+[
+ "South Dakota",
+        0.5 
+],
+[
+ "Tennessee",
+        1.7 
+],
+[
+ "Texas",
+        2.2 
+],
+[
+ "Utah",
+        0.6 
+],
+[
+ "Vermont",
+        0.6 
+],
+[
+ "Virginia",
+        1.4 
+],
+[
+ "Washington",
+        0.6 
+],
+[
+ "West Virginia",
+        1.4 
+],
+[
+ "Wisconsin",
+        0.7 
+],
+[
+ "Wyoming",
+        0.6 
+] 
+];
+data.addColumn('string','state.name');
+data.addColumn('number','Illiteracy');
+data.addRows(datajson);
+return(data);
+}
+
+// jsDrawChart
+function drawChartGeoMapID67c2332783b() {
+  var data = gvisDataGeoMapID67c2332783b();
+  var options = {};
+options["dataMode"] = "regions";
+options["width"] =    600;
+options["height"] =    400;
+options["region"] = "US";
+
+     var chart = new google.visualization.GeoMap(
+       document.getElementById('GeoMapID67c2332783b')
+     );
+     chart.draw(data,options);
+
+
+}
+
+
+// jsDisplayChart 
+function displayChartGeoMapID67c2332783b()
+{
+  google.load("visualization", "1", { packages:["geomap"] }); 
+  google.setOnLoadCallback(drawChartGeoMapID67c2332783b);
+}
+
+// jsChart 
+displayChartGeoMapID67c2332783b()
+
+<!-- jsFooter -->  
+//-->
+</script>
+
+<!-- divChart -->
+
+<div id="GeoMapID67c2332783b"
+  style="width: 600px; height: 400px;">
+</div>
+
+
+
+</div>
+<div class="section slide level1" id="reproducible-research">
+<h1>Reproducible Research</h1>
+<ul class="incremental">
+<li>Prime focus of international R conference, <a href="http://biostat.mc.vanderbilt.edu/wiki/Main/UseR-2012">UserR! 2012</a></li>
+<li><a href="http://www.reproducibleresearch.net/index.php/Main_Page">Criteria for Reproducible Research</a></li>
+<li>Literate programming:</li>
+<li>Documentation (and perhaps a statistical report) and code are maintained in one file *</li>
+<li>An example? <em>This</em> presentation is written in R, using <a href="http://yihui.name/en/2012/05/how-to-make-html5-slides-with-knitr/">knitr</a> to make HTML5 slides with <a href="http://www.w3.org/Talks/Tools/Slidy2/#(1)">Slidy</a></li>
+</ul>
+</div>
+<div class="section slide level1" id="html5-slides">
+<h1>HTML5 slides</h1>
+<ul class="incremental">
+<li>Several programs generate slides from a generic markup file (.md)</li>
+<li>R creates the .md file</li>
+<li>PanDoc converts to</li>
+</ul>
+<p>– dzslides —pandoc -s -S -i -t dzslides –mathjax DNA-Presentation.md -o DNA-Presentation.html</p>
+<p>– Slidy —pandoc -s -S -i -t slidy –mathjax R.md -o R-slidy.html — OR —- library(slidify) —- slidify(“DNA-Presentation.Rmd”)</p>
+</div>
+</body>
+</html>

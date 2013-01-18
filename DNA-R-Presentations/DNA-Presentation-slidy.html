@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <link rel="stylesheet" type="text/css" media="screen, projection, print"
+    href="http://www.w3.org/Talks/Tools/Slidy2/styles/slidy.css" />
+  <script src="http://www.w3.org/Talks/Tools/Slidy2/scripts/slidy.js.gz"
+    charset="utf-8" type="text/javascript"></script>
+</head>
+<body>
+<div class="section slide level1" id="disease-notification-analysis">
+<h1>Disease Notification Analysis</h1>
+<h2 id="dna">DNA</h2>
+<h2 id="john-painter">John Painter</h2>
+<h2 id="july-5-2012">July 5, 2012</h2>
+</div>
+<div class="section slide level1" id="what-is-dna">
+<h1>What is DNA?</h1>
+<ul class="incremental">
+<li>a system for easily viewing and analyzing EDN</li>
+<li>“EDN”&quot; -&gt; “ADN”&quot; -&gt; “DNA”&quot;</li>
+<li>Reduces complex database to drag-and-drop pivot table</li>
+<li>All aggregate data</li>
+<li>but can drillthrough to individual records</li>
+</ul>
+</div>
+<div class="section slide level1" id="where-does-dna-fit-in">
+<h1>Where Does DNA Fit In?</h1>
+<div class="figure">
+<img src="file:images/DNA-High-level-001.jpg" /><p class="caption"></p>
+</div>
+</div>
+<div class="section slide level1" id="dna-harmonizes-data-from">
+<h1>DNA harmonizes data from:</h1>
+<ul class="incremental">
+<li>3 notification systems – AIS (1997–2000) – IMP (2000–2009) – EDN (2007–present)</li>
+<li>Mulitple DS-forms</li>
+</ul>
+</div>
+<div class="section slide level1" id="how-can-i-access-dna">
+<h1>How can I access DNA?</h1>
+<ul class="incremental">
+<li>via SQL-Server 2008 Business Intelligence Design Studio</li>
+<li>Excel – make connection – drag-and-drop – update when needed</li>
+</ul>
+</div>
+<div class="section slide level1" id="all-dgmq-granted-read-only-access">
+<h1>All DGMQ granted read-only access</h1>
+<ul class="incremental">
+<li>Drillthrough (linelist with names) available, when appropriate</li>
+<li>John and Zanju can change design</li>
+</ul>
+</div>
+<div class="section slide level1" id="where-is-dna-documentation">
+<h1>Where is DNA Documentation?</h1>
+<h2 id="cdcprojectccid_ncpdcid_dgmqirmh_epi20teamdna">//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi%20Team/DNA</h2>
+<div class="figure">
+<img src="file:images/DNA%20documentation%20location.png" /><p class="caption"></p>
+</div>
+</div>
+<div class="section slide level1" id="what-is-counted">
+<h1>What is counted?</h1>
+<ul class="incremental">
+<li>DNA counts records (other values, eg. sum are available)</li>
+<li>vwEDN = count of EDN records, vwIMP= count of IMP, etc.</li>
+<li>‘All’ = sum of all records from AIS, IMP, EDN</li>
+<li>For AIS and IMP, limitted data – Only arrival date, TB class, country of birth -For EDN<br /></li>
+<li><ul class="incremental">
+<li>Every field in DS forms available</li>
+</ul></li>
+<li>WRAPS for counts of refugee records (DOS) – Special variables not captured on DS forms – Nationality, ethnicity, language, marital status, relationship</li>
+<li>Immigration Yearbook for counts of Total Immigrants (DHS) – Can be used as denominator data for calculating rates among immigrants</li>
+</ul>
+</div>
+<div class="section slide level1" id="dna-dimensions">
+<h1>DNA dimensions</h1>
+<ul class="incremental">
+<li>dimensions are like a variable, but may be cascading</li>
+<li>First, Lets look at some traditional, ‘flat’, dimensions (WRAPS, Syphilis, AlienChestXray)</li>
+<li>now, lets look at some Cascading dimensions (BirthCountry, TBClass)</li>
+</ul>
+</div>
+<div class="section slide level1" id="date-ranges">
+<h1>Date ranges</h1>
+<ul class="incremental">
+<li>Fiscal or calendar year</li>
+<li>Month of year (May, 2012) or calendar month (May)</li>
+<li>Same for quarter, week, and day</li>
+</ul>
+</div>
+<div class="section slide level1" id="tables">
+<h1>Tables</h1>
+<ul class="incremental">
+<li>placeholder for online demo – arrivals by Q station – arrivals by Visa Type and Class B TB</li>
+</ul>
+</div>
+<div class="section slide level1" id="visualize-data">
+<h1>Visualize Data</h1>
+<ul class="incremental">
+<li>Import data into other packages (R)</li>
+</ul>
+</div>
+<div class="section slide level1" id="refugees">
+<h1>Refugees</h1>
+<div class="figure">
+<img src="file:images/refugee-arrival-cumsum.png" /><p class="caption"></p>
+</div>
+</div>
+<div class="section slide level1" id="tb-notifications-immigrants-and-refugees">
+<h1>TB Notifications (Immigrants and Refugees)</h1>
+<ul class="incremental">
+<li>By Country</li>
+</ul>
+<div class="figure">
+<img src="file:images/TB-by-country.png" /><p class="caption"></p>
+</div>
+</div>
+<div class="section slide level1" id="tb-notifications-immigrants-and-refugees-1">
+<h1>TB Notifications (Immigrants and Refugees)</h1>
+<ul class="incremental">
+<li>By State</li>
+</ul>
+<div class="figure">
+<img src="file:images/TB-by-state.png" /><p class="caption"></p>
+</div>
+</div>
+<div class="section slide level1" id="refugee-arrivals-by-day">
+<h1>Refugee Arrivals by Day</h1>
+<ul class="incremental">
+<li>2003–2008, strong seasonal pattern – 1,179 arrived September27, 2008</li>
+<li>Since 2007, fewer extreme days</li>
+</ul>
+<div class="figure">
+<img src="file:images/Refugee-Arrival-HeatMap.png" /><p class="caption"></p>
+</div>
+</div>
+<div class="section slide level1" id="edn-notifications-june-2012">
+<h1>EDN Notifications, June 2012</h1>
+<ul class="incremental">
+<li>Each line represents a person</li>
+</ul>
+<div class="figure">
+<img src="file:images/Incoming.png" /><p class="caption"></p>
+</div>
+</div>
+<div class="section slide level1" id="edn-notifications-june-2012-1">
+<h1>EDN Notifications, June 2012</h1>
+<ul class="incremental">
+<li>Zoom into continental US</li>
+</ul>
+<div class="figure">
+<img src="file:images/Incoming-zoom.png" /><p class="caption"></p>
+</div>
+</div>
+<div class="section slide level1" id="html5-slides">
+<h1>HTML5 slides</h1>
+<ul class="incremental">
+<li>Several programs generate slides from a generic markup file (.md)</li>
+<li>R creates the .md file</li>
+<li>PanDoc converts to</li>
+</ul>
+<p>– Slidy —pandoc -s -S -i -t slidy –mathjax DNA-Presentation.md -o DNA-Presentation-slidy.html — OR —- library(slidify) —- slidify(“DNA-Presentation.Rmd”)</p>
+</div>
+</body>
+</html>
