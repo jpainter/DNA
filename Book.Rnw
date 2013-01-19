@@ -19,7 +19,7 @@ if (!exists('.author')) .author = Sys.info()['user']
 @
 <<"title", echo=FALSE, results="hide", message=FALSE, cache=FALSE>>=
 .title= 'Epidemiology Book of the Immigrant, Refugee, and Migrant Health Branch'
-.author = 'John A. Painter, DVM, MS'
+.author = 'John A. Painter, DVM, MS' 
 @
 
 \begin{document}
