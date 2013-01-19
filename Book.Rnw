@@ -304,45 +304,65 @@ print(xt, caption.loc = "top")
 
 \subsection{EDN Notifications by Country of Origin}
 <<'incoming-data'>>=
-startTime = date()
 
 # Read EDN Geocode 
-library(RODBC)  # need to be using 32-bit version of R for this to work with CDC's 32-bit version of office
-edn.geocode = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/EDN geocode.accdb"
-edn.con = odbcConnectAccess2007(edn.geocode)
-
+## # need to be using 32-bit version of R for this to work with CDC's 32-bit version of office
+  library(RODBC)  
+  edn.geocode = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/EDN geocode.accdb"
+  edn.con = odbcConnectAccess2007(edn.geocode)
+  
 # Set date range:
-qry = "SELECT * FROM Table1 WHERE (((DateDiff('d',[ArrivalDate],Date()))<=365) 
-      AND ((Table1.Status)='OK') AND ((Table1.Country) Is Not Null))"
-edn = sqlQuery( edn.con, qry)
-odbcCloseAll()
+  
+  qry = "SELECT * FROM Table1 WHERE [ArrivalDate] between CDATE('1/1/2012') AND CDATE('12/31/2012')"
+  
+  edn = sqlQuery( edn.con, qry)
+  odbcCloseAll()
 
 # Adresses are the final destination.  Will need to add starting points
 
-# rename country to country.code
-colnames(edn)[14]<-"country.code"
+# rename cols
+  colnames(edn)[colnames(edn) %in% "Country"]<-"country.code"
+  colnames(edn)[colnames(edn) %in% "state"]<-"state.abb"
 
-save(edn, "edn.rda")
+# save
+  save(edn, file = "edn.rda")
 
-# List of incoming countries
-t = as.data.frame(table(incoming$Country))
+# join with list of FIPS codes (used by EDN)  
+  #    url ="http://cloford.com/resources/codes/index.htm" 
+  # Copy and paste table into notepad
+  #   fips = read.delim(file="C:/Users/bzp3/Desktop/R/Maps/fips-iso-codes.txt", 
+  #                     header=TRUE, sep="\t", fill = TRUE, comment.char="")
+  #    colnames(fips)[colnames(fips) %in% "ISO..2."] <- "ISO2"
+  #    fips[fips$FIPS=="CF", "FIPS"] <- "CG"  
+  # EDN for Rep of Congo is CG not CF ???
+#   save(fips, file="fips.rda")
+
+# merge
+    edn.country = data.frame(country.code = as.character(edn$country.code))
+    edn.country = merge(edn.country, fips, by.x="country.code", by.y="FIPS", all.x=TRUE)
+
+# Count incoming countries
+  t = as.data.frame(table(edn.country$Country))
+
 # limit to countries with > 1 
-t = t[t$Freq>0,]
-names(t) = c("Country", "Notifications")
-t = t[rev(order(t$Notifications)),]
-rownames(t) = 1:nrow(t)  # sets rownames to order of entry
-t$Notifications = format(t$Notifications , big.mark=",")
-
-library(xtable)
-xt = xtable(t[1:20,], caption="Top 20 notifications by Country of Origin")
-print(xt, caption.loc="top")
+  t = t[t$Freq>0,]
+  names(t) = c("Country", "Notifications")
+  t = t[rev(order(t$Notifications)),]
+  rownames(t) = 1:nrow(t)  # sets rownames to order of entry
+  t$Notifications = format(t$Notifications , big.mark=",")
+  
+  library(xtable)
+  xt = xtable(t[1:20,], caption="Top 20 notifications by Country of Origin")
+  print(xt, caption.loc="top")
 
 @
 
-<<'incoming-map-data'>>=
 
-## Country centroids
- Get avg lat-long for source countries !Only need to download once. ----
+<<'incoming-map-data', eval=FALSE>>=
+## only needs to be run if the data "country.lat.long' and 'state.codes' are missing
+
+# Country centroids
+ Get avg lat-long for source countries !Only need to download once. 
  library(XML)
  url ="http://www.maxmind.com/app/country_latlon"  # has lat-long for each country, by iso code
    iso = read.csv("c:/Users/bzp3/desktop/R/Maps/iso3166countries.txt", as.is=T) # don't convert values to factors
@@ -353,18 +373,12 @@ print(xt, caption.loc="top")
    # convert <NA> to NA, row 155
    iso[155,1] <- "NA"
  
- # join with list of FIPS codes (used by EDN)  
-   url ="http://cloford.com/resources/codes/index.htm" 
-# Copy and paste table into notepad
-  fips = read.delim(file="C:/Users/bzp3/Desktop/R/Maps/fips-iso-codes.txt", 
-                    header=TRUE, sep="\t", fill = TRUE, comment.char="")
-   colnames(fips)[6] <- "ISO2"
-   fips[fips$FIPS=="CF", "FIPS"] <- "CG"  # EDN for Rep of Congo is CG not CF
 # merge
+  load("fips.rda")
    country.lat.long = merge(iso, fips, by="ISO2")
  
 # save
-  save(country.lat.long, file="country.lat.long.RData")  load("country.lat.long.RData")
+  save(country.lat.long, file="country.lat.long.RData")  
 
 # FIPS and Centroids for states
 library(rgdal)
@@ -395,7 +409,7 @@ library(ggplot2)
 # combine
   state.centroids = rbind(state.centroids, state.centroids2)
 
-# FIPS
+# US FIPS
   data(state.fips) # state fips codes from maps package
   state.fips$state = sapply(strsplit(as.character(state.fips$polyname)
                                    , ":"), function(x) x[1])
@@ -414,6 +428,7 @@ library(ggplot2)
   state.codes = state.codes[order(as.character(state.codes$abb)),]
 
   save(state.codes, file="state.codes.rda")
+
 @
 
 <<'incoming-map-routes', eval=FALSE>>=     
@@ -422,18 +437,15 @@ library(ggplot2)
   load("country.lat.long.rda")
 
 # Incoming: data with key attributes aggregated by country and destination state ----
-library(plyr)
-countryToState = mutate(data = incoming, .(Country, state),
-                        count = nrow(),
-                        StartLong= max(StartLong), 
-                        StartLat = max(StartLat),
-                        stateLong = max(stateLong),
-                        stateLat = max(stateLat)
-                        )
+  library(plyr)
+  countryToState = ddply(.data = edn, .(country.code, state.abb), 
+                         summarize, 
+                          count = length(state.abb)
+                           )
                         
 #  Insert lat/long data for place of origin 
-  incoming = merge(countryToState, 
-                   country.lat.long, by.x="country.code", by.y="FIPS")
+  incoming.country = merge(countryToState, country.lat.long, 
+                           by.x="country.code", by.y="FIPS", all.x=TRUE)
 
 ## check for unmatched country codes ----
 #   unmatched = merge(countryToState, 
@@ -442,11 +454,15 @@ countryToState = mutate(data = incoming, .(Country, state),
 #   missing
 
 #  Insert lat/long data for destination state 
- incoming = merge(countryToState, state.codes, by.x="abb", by.y="abb")
+ incoming = merge(incoming.country, state.codes, 
+                  by.x="state.abb", by.y="abb", all.x = TRUE)
+
+# Remove missing records with missing country or state
+  incoming = incoming[ !is.na(incoming$CountryLong) & !is.na(incoming$stateLong),]
 
 # save
-  save(incoming, "incoming.rda")
-
+  save(incoming, file="incoming.rda")
+  
 # # When notification is secondary migration, replace StartLat StartLong with values from scnd.migration table
 # incoming = merge(incoming, scnd, by.x="AddressID", by.y="AddressID", all.x=TRUE )
 # Assign stating points
@@ -455,24 +471,24 @@ countryToState = mutate(data = incoming, .(Country, state),
 
 # calculate routes ----
   library(geosphere)
-  rts <- gcIntermediate( incoming[,c('StartLong', 'StartLat')], 
-                         incoming[,c('stateLong', 'stateLat')], 
-                         30, breakAtDateLine=FALSE, addStartEnd=TRUE, sp=TRUE) 
+  rts <- gcIntermediate( incoming[ ,c('CountryLong', 'CountryLat')], 
+                         incoming[ ,c('stateLong', 'stateLat')], 
+                         30, breakAtDateLine=TRUE, addStartEnd=TRUE, sp=TRUE) 
 #- Dateline Break FALSE, 
 # otherwise we get a bump in the shifted ggplots
 
 # trying to avoid ggplot....bceasue it is slow (jp jan 2013)
-# require(ggplot2)
-# source ("fortify-spatial.r")
-# rts.ff <- fortify.SpatialLinesDataFrame(rts) # convert into something ggplot can plot
-# incoming$id <-as.character(c(1:nrow(incoming))) # that rts.ff$id is a char
+require(ggplot2)
+source ("fortify-spatial.r")
+rts.ff <- fortify.SpatialLinesDataFrame(rts) # convert into something ggplot can plot
+incoming$id <-as.character(c(1:nrow(incoming))) # that rts.ff$id is a char
 
 # join attributes, we keep them all, just in case
-# gcircles <- merge(rts.ff, incoming, all.x=T, by="id") # ggplot
-  gcircles <- merge(rts, incoming, all.x=T, by="id") 
+  gcircles <- merge(rts.ff, incoming, all.x=T, by="id") # ggplot
+#   gcircles <- merge(rts, incoming, all.x=T, by="id") 
 
 # remove unneeded objects
-  rm(state.codes, country.lat.long, edn)
+  rm(state.codes, country.lat.long, edn, incoming)
 
   save(gcircles, file="gcircles.RData")
 
@@ -480,7 +496,7 @@ countryToState = mutate(data = incoming, .(Country, state),
 
 Map of EDN arrivals from DATE! to DATE@ ...Width of line is proportional to the number of arrivals
 
-<<'recalculate-map-data', fig.cap='Map of EDN Arrivals', eval=FALSE>>=
+<<'recenter-map-data', fig.cap='Map of EDN Arrivals', eval=FALSE>>=
 ########################## Run this when updating the map...it takes a very long time.... 
 ### Functions to regroup split lines and polygons when recentering 
 # takes dataframe, column with long and unique group variable, returns df with added column named group.regroup
@@ -540,17 +556,46 @@ ClosePolygons <- function(df, longcol, ordercol){
 
 <<'plot-map', cache=TRUE, fig.cap='Map of EDN Arrivals'>>=
 #### retreive map data
-load("worldmap.cp.RData")
-load("states.cp.RData")
+
 load("gcircles.rg.RData")
 
-# ggplot ----
-plotStartTime = date()
 require(ggplot2)
+worldmap <- map_data ("world")
+states <- map_data("state")
+
+# recenter plot ----
+
+# load("worldmap.cp.RData")
+# load("states.cp.RData")
+
+# g= ggplot() +
+#   theme(panel.background = element_rect(fill='grey95',colour='grey95')) + 
+#   geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="#f9f9f9", colour = "grey", data=worldmap.cp) +
+#   geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="White", colour = "grey35", alpha=.1, data=states.cp) +  
+#   theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank(),  
+#        axis.ticks = element_blank(), 
+#        axis.title.x = element_blank(), axis.title.y = element_blank(), 
+#        axis.text.x = element_blank(), axis.text.y = element_blank()
+#        , legend.position = "none"
+#        ) +
+#   ylim(-60, 90) +
+#   coord_equal()
+# 
+# routes = geom_line(aes(long.recenter,lat, 
+#                        group=group.regroup, 
+#                        colour=AlienType, 
+#                        type=Class), 
+#                    alpha=.1, 
+#                    lineend="round", 
+#                    lwd=.1, 
+#                    data= gcircles.rg  
+#                    )  
+
+# without recenter----
 g= ggplot() +
   theme(panel.background = element_rect(fill='grey95',colour='grey95')) + 
-  geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="#f9f9f9", colour = "grey", data=worldmap.cp) +
-  geom_polygon(aes(long.recenter,lat, group=group.regroup), size = 0.2, fill="White", colour = "grey35", alpha=.1, data=states.cp) +  
+  geom_polygon(aes(long,lat, group=group), size = 0.2, fill="#f9f9f9", colour = "grey", data=worldmap) +
+  geom_polygon(aes(long,lat, group=group), size = 0.2, fill="White", colour = "grey35", alpha=.1, data=states) +  
   theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank(),  
        axis.ticks = element_blank(), 
        axis.title.x = element_blank(), axis.title.y = element_blank(), 
@@ -560,14 +605,13 @@ g= ggplot() +
   ylim(-60, 90) +
   coord_equal()
 
-routes = geom_line(aes(long.recenter,lat, 
-                       group=group.regroup, 
-                       colour=AlienType, 
-                       type=Class), 
+routes = geom_line(aes(long,lat, 
+                       group=group), # removed colour=AlienType, 
+#                                   type=Class), 
                    alpha=.1, 
                    lineend="round", 
-                   lwd=.1, 
-                   data= gcircles.rg  
+                   lwd=.01,  
+                   data= gcircles  
                    )  
 g + routes
 
