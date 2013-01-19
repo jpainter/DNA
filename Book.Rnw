@@ -362,7 +362,7 @@ print(xt, caption.loc = "top")
 ## only needs to be run if the data "country.lat.long' and 'state.codes' are missing
 
 # Country centroids
- Get avg lat-long for source countries !Only need to download once. 
+#  Get avg lat-long for source countries !Only need to download once. 
  library(XML)
  url ="http://www.maxmind.com/app/country_latlon"  # has lat-long for each country, by iso code
    iso = read.csv("c:/Users/bzp3/desktop/R/Maps/iso3166countries.txt", as.is=T) # don't convert values to factors
@@ -434,11 +434,11 @@ library(ggplot2)
 <<'incoming-map-routes', eval=FALSE>>=     
   load("edn.rda")
   load("state.codes.rda")
-  load("country.lat.long.rda")
+  load("country.lat.long.RData")
 
 # Incoming: data with key attributes aggregated by country and destination state ----
   library(plyr)
-  countryToState = ddply(.data = edn, .(country.code, state.abb), 
+  countryToState = ddply(.data = edn, .(country.code, state.abb, AlienType), 
                          summarize, 
                           count = length(state.abb)
                            )
@@ -591,6 +591,11 @@ states <- map_data("state")
 #                    data= gcircles.rg  
 #                    )  
 
+# scale counts
+gcircles$freq = ifelse(gcircles$count <100, .1, 
+                       ifelse(gcircles$count <500, 1, 10)
+                      )
+
 # without recenter----
 g= ggplot() +
   theme(panel.background = element_rect(fill='grey95',colour='grey95')) + 
@@ -605,15 +610,15 @@ g= ggplot() +
   ylim(-60, 90) +
   coord_equal()
 
-routes = geom_line(aes(long,lat, 
-                       group=group), # removed colour=AlienType, 
-#                                   type=Class), 
+routes = geom_line(aes(long,lat,
+                       colour=AlienType,
+                       size=freq), 
                    alpha=.1, 
-                   lineend="round", 
-                   lwd=.01,  
+                   lineend="round",  
                    data= gcircles  
                    )  
-g + routes
+g + routes +  scale_size_continuous(breaks = c(0, 100, 500, 1000),  
+                                    range = c(.01, 30))
 
 
 @
