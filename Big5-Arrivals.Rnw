@@ -9,7 +9,7 @@
 \usepackage{rotating}
  
 <<'setup', echo=FALSE , message=FALSE, cache=FALSE>>=
-opts_chunk$set( echo=FALSE, cache=TRUE, results='asis',
+opts_chunk$set( echo=TRUE, cache=FALSE, results='asis',
                 fig.align='left', fig.show='hold', fig.width=7, fig.height=7,
                 fig.path='images',message=FALSE, comment="", tidy=TRUE)
 options(replace.assign=TRUE,width=90)
@@ -17,7 +17,7 @@ if (!exists('.title')) .title = 'Immigrant, Refugee, and Migrant Health Branch'
 if (!exists('.author')) .author = Sys.info()['user']
 @
 
-<<'title', echo=FALSE, results=hide, message=FALSE, cache=FALSE>>=
+<<'title', echo=FALSE, results='hide', message=FALSE, cache=FALSE>>=
 .title= 'Immigration Medical Exams:  Shared Countries of Origin (2005-2009)'
 .author = 'Zachary White, John Painter'
 @
@@ -47,18 +47,18 @@ We collected immigration and imported tuberculosis case data for the years 2005 
 
 #Load spreadsheet
 library(XLConnect)
-wb <- loadWorkbook("c:/users/bzp3/desktop/dna/Final Analysis Cumulative Totals Percentage.xlsx")
+wb <- loadWorkbook("c:/users/bzp3/desktop/DNA/Big5.xlsx")
 us <- readWorksheet(wb, sheet = "U.S. Arrivals", startRow=1, startCol=1, header = TRUE)
 aus <- readWorksheet(wb, sheet = "Australia Arrivals", startRow=1, startCol=1, header = TRUE)
 nz <- readWorksheet(wb, sheet = "New Zealand Arrivals", startRow=1, startCol=1, header = TRUE)
 ca <- readWorksheet(wb, sheet = "Canada Arrivals", startRow=1, startCol=1, header = TRUE)
-UK <- readWorksheet(wb, sheet = "U.K. Arrivals", startRow=1, startCol=1, header = TRUE)
+uk <- readWorksheet(wb, sheet = "U.K. Arrivals", startRow=1, startCol=1, header = TRUE)
 
 us.tb <- readWorksheet(wb, sheet = "U.S. TB", startRow=1, startCol=1, header = TRUE)
 aus.tb <- readWorksheet(wb, sheet = "Australia TB", startRow=1, startCol=1, header = TRUE)
 nz.tb <- readWorksheet(wb, sheet = "New Zealand TB", startRow=1, startCol=1, header = TRUE)
 ca.tb <- readWorksheet(wb, sheet = "Canada TB", startRow=1, startCol=1, header = TRUE)
-UK.tb <- readWorksheet(wb, sheet = "U.K. TB", startRow=1, startCol=1, header = TRUE)
+uk.tb <- readWorksheet(wb, sheet = "U.K. TB", startRow=1, startCol=1, header = TRUE)
 
 ## cleaning .....
   # remove large number of 'arrivals' from NZ to Nz (status adjusters?)
@@ -67,37 +67,49 @@ UK.tb <- readWorksheet(wb, sheet = "U.K. TB", startRow=1, startCol=1, header = T
   us[,2] = round(us[,2])
 
 
-# for some reason, us sheed has rows of missing data at end. limit to 201 rows with data
-us = us[1:201,]
+# for some reason, us sheet has rows of missing data at end. limit to 201 rows with data
+us = us[1:202,]
 
 # Add TB columns to main sheet
-us = cbind(us, us.tb)[,c(1,2,4,5)]  # select columns except 3, which is duplicate origin
-aus = cbind(aus, aus.tb)[,c(1,2,4,5)]
-nz = cbind(nz, nz.tb)[,c(1,2,4,5)]
+us = merge(us, us.tb, by.x=1, by.y=1 )[,c(1,2,4,8)]
+aus = merge(aus, aus.tb, by.x=1, by.y=1 )[,c(1,2,4,8)]
+nz = merge(nz, nz.tb, by.x=1, by.y=1 )[,c(1,2,4,8)]
+ca = merge(ca, ca.tb, by.x=1, by.y=1 )[,c(1,2,4,8)]
+uk = merge(uk, uk.tb, by.x=1, by.y=1 )[,c(1,2,4,8)]
 
 # rename columns
 names(us) = c("origin", "arrivals", "TB", "MDR")
 names(aus) = c("origin", "arrivals", "TB", "MDR")
 names(nz) = c("origin", "arrivals", "TB", "MDR")
+names(ca) = c("origin", "arrivals", "TB", "MDR")
+names(uk) = c("origin", "arrivals", "TB", "MDR")
 
 # calculate percent of total 
 us$percent = 100* us$arrivals/ sum(us$arrivals, na.rm=TRUE)
 aus$percent = 100* aus$arrivals/ sum(aus$arrivals, na.rm=TRUE)
 nz$percent = 100* nz$arrivals/ sum(nz$arrivals, na.rm=TRUE)
+ca$percent = 100* ca$arrivals/ sum(ca$arrivals, na.rm=TRUE)
+uk$percent = 100* uk$arrivals/ sum(uk$arrivals, na.rm=TRUE)
 
 us$percent.tb = 100* us$TB/ sum(us$TB, na.rm=TRUE)
 aus$percent.tb = 100* aus$TB/ sum(aus$TB, na.rm=TRUE)
 nz$percent.tb = 100* nz$TB/ sum(nz$TB, na.rm=TRUE)
+ca$percent.tb = 100* ca$TB/ sum(ca$TB, na.rm=TRUE)
+uk$percent.tb = 100* uk$TB/ sum(uk$TB, na.rm=TRUE)
 
 us$percent.mdr = 100* us$"MDR"/ sum(us$"MDR", na.rm=TRUE)
 aus$percent.mdr = 100* aus$"MDR"/ sum(aus$"MDR", na.rm=TRUE)
 nz$percent.mdr = 100* nz$"MDR"/ sum(nz$"MDR", na.rm=TRUE)
+ca$percent.mdr = 100* ca$"MDR"/ sum(ca$"MDR", na.rm=TRUE)
+uk$percent.mdr = 100* uk$"MDR"/ sum(uk$"MDR", na.rm=TRUE)
 
-# JOin into one table (big3)
+# JOin into one table (big5)
 us$host = "US"
 aus$host = "Aus"
 nz$host = "NZ"
-big3 = rbind(us, aus, nz)
+ca$host = "CA"
+uk$host = "UK"
+big5 = rbind(us, aus, nz, ca, uk)
 @
 
 \section{Top Countries of Origin (5 Year totals: 2005-2009)}
@@ -124,18 +136,34 @@ nz.top = data.frame(origin = nz.rank$origin,
                     arrivals = nz.rank$arrivals, 
                     percent = nz.rank$percent)
 
-top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,])
+ca.rank = ca[rev(order(ca$arrivals)), c("origin", "host", "arrivals", "percent") ]
+ca.rank$origin = reorder(ca.rank$origin, -ca.rank$arrivals)
+ca.top = data.frame(origin = ca.rank$origin,
+                    arrivals = ca.rank$arrivals, 
+                    percent = ca.rank$percent)
+
+uk.rank = uk[rev(order(uk$arrivals)), c("origin", "host", "arrivals", "percent") ]
+uk.rank$origin = reorder(uk.rank$origin, -uk.rank$arrivals)
+uk.top = data.frame(origin = uk.rank$origin,
+                    arrivals = uk.rank$arrivals, 
+                    percent = uk.rank$percent)
+
+top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,], ca.top[,], uk.top[,])
 # print top 25
-# remove redundant ranks
-cols = c(1,2,3,4,6,7,8,10,11,12)  #identify colums to keep
-t = top.arrivals[1:25, ]
-colnames(t) = c("AUS-Immigrants", "AUS-Arrivals", "AUS-% Total", "NZ-Immigrants", "NZ-Arrivals", "NZ-% Total", "US-Immigrants", "US-Arrivals", "US-% Total")
-cols.comma = c(2,5,8)  # identify columns that need commas for thousands
-cols.dec = c(0,0,0,1,0,0,1,0,0,1)   # identify columns that need decimals
-t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
-print(xtable(t, caption = "Top 25 Countries of Origin for Arrivals, 2005-2009", digits=1 ,
-              align=c('l', 'r', 'r','r','r','r','r','r', 'r', 'r')),
-               floating.environment='sidewaystable', caption.placement='top')
+
+      t = top.arrivals[1:25, ]
+      colnames(t) = c("AUS-Immigrants", "AUS-Arrivals", "AUS-% Total", 
+                      "CA-Immigrants", "CA-Arrivals", "CA-% Total", 
+                      "NZ-Immigrants", "NZ-Arrivals", "NZ-% Total",
+                      "UK-Immigrants", "UK-Arrivals", "UK-% Total", 
+                      "US-Immigrants", "US-Arrivals", "US-% Total"
+                      )
+      cols.comma = c(2,5,8,11,14)  # identify columns that need commas for thousands
+      cols.dec = c(0,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1)   # identify columns that need decimals
+      t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
+      print(xtable(t, caption = "Top 25 Countries of Origin for Arrivals, 2005-2009", digits=1 ,
+                    align=c('l', rep('r', 15))),
+                     floating.environment='sidewaystable', caption.placement='top')
 @
 
 <<'tb'>>=
@@ -158,18 +186,36 @@ nz.top = data.frame(origin = nz.rank$origin,
                     tb = nz.rank$TB, 
                     percent = nz.rank$percent)
 
-top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,])
+ca.rank = ca[rev(order(ca$TB)), c("origin", "host", "TB", "percent") ]
+ca.rank$origin = reorder(ca.rank$origin, -ca.rank$TB)
+ca.top = data.frame(origin = ca.rank$origin,
+                    tb = ca.rank$TB, 
+                    percent = ca.rank$percent)
+
+uk.rank = uk[rev(order(uk$TB)), c("origin", "host", "TB", "percent") ]
+uk.rank$origin = reorder(uk.rank$origin, -uk.rank$TB)
+uk.top = data.frame(origin = uk.rank$origin,
+                    tb = uk.rank$TB, 
+                    percent = uk.rank$percent)
+
+
+top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,], ca.top[,], uk.top[,])
 # print top 25
-# remove redundant ranks
-cols = c(1,2,3,4,6,7,8,10,11,12)  #identify colums to keep
-t = top.arrivals[1:25, ]
-colnames(t) = c("AUS-Immigrants", "AUS-TB", "AUS-% Total", "NZ-Immigrants", "NZ-TB", "NZ-% Total", "US-Immigrants", "US-TB", "US-% Total")
-cols.comma = c(2,5,8)  # identify columns that need commas for thousands
-cols.dec = c(0,0,0,1,0,0,1,0,0,1)   # identify columns that need decimals
-t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
-print(xtable(t, caption = "Top 25 Countries of Origin for Foreign-born Tuberuclosis, 2005-2009", digits=1 ,
-              align=c('l', 'r', 'r','r','r','r','r','r', 'r', 'r')),
-               floating.environment='sidewaystable', caption.placement='top')
+
+      t = top.arrivals[1:25, ]
+      colnames(t) = c("AUS-Immigrants", "AUS-TB", "AUS-% Total", 
+                      "CA-Immigrants", "CA-TB", "CA-% Total", 
+                      "NZ-Immigrants", "NZ-TB", "NZ-% Total",
+                      "UK-Immigrants", "UK-TB", "UK-% Total", 
+                      "US-Immigrants", "US-TB", "US-% Total"
+                      )
+      cols.comma = c(2,5,8,11,14)  # identify columns that need commas for thousands
+      cols.dec = c(0,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1)   # identify columns that need decimals
+      t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
+      print(xtable(t, caption = "Top 25 Countries of Origin for Foreign-born Tuberuclosis, 2005-2009",
+                   digits=1 ,
+                    align=c('l', rep('r', 15))),
+                     floating.environment='sidewaystable', caption.placement='top')
 @
 
 <<'mdr'>>=
@@ -192,18 +238,36 @@ nz.top = data.frame(origin = nz.rank$origin,
                     arrivals = nz.rank$MDR, 
                     percent = nz.rank$percent)
 
-top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,])
+ca.rank = ca[rev(order(ca$MDR)), c("origin", "host", "MDR", "percent.mdr") ]
+ca.rank$origin = reorder(ca.rank$origin, -ca.rank$MDR)
+ca.top = data.frame(origin = ca.rank$origin,
+                    arrivals = ca.rank$MDR, 
+                    percent = ca.rank$percent)
+
+uk.rank = uk[rev(order(uk$MDR)), c("origin", "host", "MDR", "percent.mdr") ]
+uk.rank$origin = reorder(uk.rank$origin, -uk.rank$MDR)
+uk.top = data.frame(origin = uk.rank$origin,
+                    arrivals = uk.rank$MDR, 
+                    percent = uk.rank$percent)
+
+
+top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,], ca.top[,], uk.top[,])
 # print top 25
-# remove redundant ranks
-cols = c(1,2,3,4,6,7,8,10,11,12)  #identify colums to keep
-t = top.arrivals[1:25, ]
-colnames(t) = c("AUS-Immigrants", "AUS-MDR", "AUS-% Total", "NZ-Immigrants", "NZ-MDR", "NZ-% Total", "US-Immigrants", "US-MDR", "US-% Total")
-cols.comma = c(2,5,8)  # identify columns that need commas for thousands
-cols.dec = c(0,0,0,1,0,0,1,0,0,1)   # identify columns that need decimals
-t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
-print(xtable(t, caption = "Top 25 Countries of Origin for Foreign-born MDR-Tuberuclosis, 2005-2009", digits=1 ,
-              align=c('l', 'r', 'r','r','r','r','r','r', 'r', 'r')),
-               floating.environment='sidewaystable', caption.placement='top')
+
+      t = top.arrivals[1:25, ]
+      colnames(t) = c("AUS-Immigrants", "AUS-MDR", "AUS-% Total", 
+                      "CA-Immigrants", "CA-MDR", "CA-% Total", 
+                      "NZ-Immigrants", "NZ-MDR", "NZ-% Total",
+                      "UK-Immigrants", "UK-MDR", "UK-% Total", 
+                      "US-Immigrants", "US-MDR", "US-% Total"
+                      )
+      cols.comma = c(2,5,8,11,14)  # identify columns that need commas for thousands
+      cols.dec = c(0,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1)   # identify columns that need decimals
+      t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
+      print(xtable(t, caption = "Top 25 Countries of Origin for Foreign-born MDR-Tuberuclosis, 2005-2009",
+                   digits=1 ,
+                    align=c('l', rep('r', 15))),
+                     floating.environment='sidewaystable', caption.placement='top')
 @
 
 <<'tables', eval=FALSE>>=
@@ -231,14 +295,16 @@ The following charts show the top 25 countries of origin for the combined percen
 
 <<'plot-arrivals', fig.cap='Immigration Arrivals: Top Shared Countries of Origin'>>=
 require(ggplot2)
+require(plyr)
+
 # select top 25 by total percentage
-tops = ddply(big3, .(origin), summarise, total=sum(percent, na.rm=TRUE))
+tops = ddply(big5, .(origin), summarise, total=sum(percent, na.rm=TRUE))
 tops = tops[ rev(order(tops$total)) ,]
-big3.ar = big3[big3$origin %in% tops[1:25,"origin"], ]
+big5.ar = big5[big5$origin %in% tops[1:25,"origin"], ]
 
 # order by  size .  
-big3.ar$origin <- reorder(big3.ar$origin, big3.ar$percent)
-data = big3.ar
+big5.ar$origin <- reorder(big5.ar$origin, big5.ar$percent)
+data = big5.ar
 
 ggplot(data=data) +
   geom_bar(aes(x= origin , y=percent , fill=host )) + 
@@ -246,7 +312,7 @@ ggplot(data=data) +
   coord_flip()
 
 # chart us arrivals
-# ggplot(data=big3[big3$host %in% "US" & big3$percent>=.1,]) +
+# ggplot(data=big5[big5$host %in% "US" & big5$percent>=.1,]) +
 #   geom_bar(aes(x= origin , y=percent , fill=host )) + 
 #   coord_flip()
 
@@ -255,13 +321,13 @@ ggplot(data=data) +
 
 <<'plot-tb', fig.cap='Imported TB: Top Shared Countries of Origin'>>=
 # select top 25 by total percentage
-tops = ddply(big3, .(origin), summarise, total=sum(percent.tb, na.rm=TRUE))
+tops = ddply(big5, .(origin), summarise, total=sum(percent.tb, na.rm=TRUE))
 tops = tops[ rev(order(tops$total)) ,]
-big3.tb = big3[big3$origin %in% tops[1:25,"origin"], ]
+big5.tb = big5[big5$origin %in% tops[1:25,"origin"], ]
 
 # order by  size .  
-big3.tb$origin <- reorder(big3.tb$origin, big3.tb$percent.tb)
-data = big3.tb
+big5.tb$origin <- reorder(big5.tb$origin, big5.tb$percent.tb)
+data = big5.tb
 
 ggplot(data=data) +
   geom_bar(aes(x= origin , y=percent.tb , fill=host )) + 
@@ -272,13 +338,13 @@ ggplot(data=data) +
 
 <<'plot-mdr', fig.cap='Imported MDR-TB: Top Shared Countries of Origin'>>=
 # select top 25 by total percentage
-tops = ddply(big3, .(origin), summarise, total=sum(percent.mdr, na.rm=TRUE))
+tops = ddply(big5, .(origin), summarise, total=sum(percent.mdr, na.rm=TRUE))
 tops = tops[ rev(order(tops$total)) ,]
-big3.mdr = big3[big3$origin %in% tops[1:25,"origin"], ]
+big5.mdr = big5[big5$origin %in% tops[1:25,"origin"], ]
 
 # order by size .  
-big3.mdr$origin <- reorder(big3.mdr$origin, big3.mdr$percent.mdr)
-data = big3.mdr
+big5.mdr$origin <- reorder(big5.mdr$origin, big5.mdr$percent.mdr)
+data = big5.mdr
 
 ggplot(data=data) +
   geom_bar(aes(x= origin , y=percent.mdr , fill=host )) + 
@@ -311,42 +377,42 @@ map_world <- list(
 
 
 # merge on country name
-big3.map.ar.data = merge(big3.ar, world, by.x="origin", by.y="NAME", all.y=TRUE)  # top 20 countries
+big5.map.ar.data = merge(big5.ar, world, by.x="origin", by.y="NAME", all.y=TRUE)  # top 20 countries
 
 library(ggsubplot)
-big3.map.ar = ggplot(big3.map.ar.data) + map_world +
+big5.map.ar = ggplot(big5.map.ar.data) + map_world +
                     geom_subplot2d(aes(LON, LAT,
                       subplot = geom_bar(aes(x= host , y=percent , fill=host )) ),
                       ref=NULL, width = rel(0.8)) +
                     theme(panel.background = element_rect(fill='white',colour='grey95'))
                        
-big3.map.ar
+big5.map.ar
 @
 
 <<'map-tb', fig.cap="Tuberculosis: Percent Foreign-born Cases", warning=FALSE>>=
-big3.map.tb.data = merge(big3.tb, world, by.x="origin", by.y="NAME", all.y=TRUE)  # top 20 countries
+big5.map.tb.data = merge(big5.tb, world, by.x="origin", by.y="NAME", all.y=TRUE)  # top 20 countries
 
-big3.map.tb = ggplot(big3.map.tb.data) + 
+big5.map.tb = ggplot(big5.map.tb.data) + 
                     map_world + 
                     geom_subplot2d(aes(LON, LAT,
                       subplot = geom_bar(aes(x= host , y=percent.tb , fill=host )) ),
                       ref=NULL, width = rel(0.8))  +
                     theme(panel.background = element_rect(fill='white',colour='grey95'))
                        
-big3.map.tb
+big5.map.tb
 @
 
 <<'map-mdr', fig.cap="MDR-TB: Percent Foreign-born Cases", warning=FALSE>>=
-big3.map.mdr.data = merge(big3.mdr, world, by.x="origin", by.y="NAME", all.y=TRUE)  # top 20 countries
+big5.map.mdr.data = merge(big5.mdr, world, by.x="origin", by.y="NAME", all.y=TRUE)  # top 20 countries
 
-big3.map.mdr = ggplot(big3.map.mdr.data) + 
+big5.map.mdr = ggplot(big5.map.mdr.data) + 
                     map_world + 
                     geom_subplot2d(aes(LON, LAT,
                       subplot = geom_bar(aes(x= host , y=percent.mdr , fill=host )) ),
                       ref=NULL, width = rel(0.8))  +
                     theme(panel.background = element_rect(fill='white',colour='grey95'))
                        
-big3.map.mdr
+big5.map.mdr
 @
 \section{Comparison of Foreign-Born TB and MDR-TB Rates by Originating Country}
 Let's compare the rate of TB and MDR-TB by country of origin among the three host countries.  
@@ -360,10 +426,10 @@ Let's compare the rate of TB and MDR-TB by country of origin among the three hos
 \subsection{Comparison of Tuberculosis Rates (/100,000 population) Diagnosed at Immigrant Application}
 <<'tb-rates', >>=
 # examine tb rate among top 4 origin countries (excl PNG)
-tb = big3.tb[big3.tb$TB >= 50,]
+tb = big5.tb[big5.tb$TB >= 50,]
 tb$rate = tb$TB*100000/tb$arrivals
 
-# only India , Philippines, and China have 100+ cases in each of Big3
+# only India , Philippines, and China have 100+ cases in each of big5
 countries = which(tb$origin %in% "India" | tb$origin %in% "China" | tb$origin %in% "Philippines")
 tb.table = xtabs( data=tb[countries,], 100000*TB/arrivals ~ origin + host, drop.unused.levels = TRUE)
 
@@ -393,10 +459,10 @@ chisq.test(china)
 \subsection{Comparison of MDR-TB Rates (/100 TB case) Diagnosed at Immigrant Application}
 <<'mdr-tb-rates'>>=
 # examine mdr-tb rate among top 4 origin countries (excl PNG)
-mdr = big3.mdr[big3.mdr$TB >= 50,]
+mdr = big5.mdr[big5.mdr$TB >= 50,]
 mdr$rate = mdr$MDR*100/mdr$TB
 
-# only India and China have 100+ cases in each of Big3
+# only India and China have 100+ cases in each of big5
 countries = which(mdr$origin %in% "India" | mdr$origin %in% "China"| mdr$origin %in% "Philippines")
 mdr.table = xtabs( data=mdr[countries,], 100*MDR/TB ~ origin + host, drop.unused.levels = TRUE)
 
