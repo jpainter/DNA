@@ -6,10 +6,11 @@
 \usepackage[section]{placeins}  %% keeps output from floating into adjoining sections
 \usepackage{fixltx2e}
 \usepackage{booktabs} % for table formatting
-\usepackage{rotating}
+\usepackage{rotating} % for sideway tables
+\usepackage{tabularx} % to size table column widths
  
 <<'setup', echo=FALSE , message=FALSE, cache=FALSE>>=
-opts_chunk$set( echo=TRUE, cache=FALSE, results='asis',
+opts_chunk$set( echo=FALSE, cache=FALSE, results='asis',
                 fig.align='left', fig.show='hold', fig.width=7, fig.height=7,
                 fig.path='images',message=FALSE, comment="", tidy=TRUE)
 options(replace.assign=TRUE,width=90)
@@ -48,17 +49,24 @@ We collected immigration and imported tuberculosis case data for the years 2005 
 #Load spreadsheet
 library(XLConnect)
 wb <- loadWorkbook("c:/users/bzp3/desktop/DNA/Big5.xlsx")
-us <- readWorksheet(wb, sheet = "U.S. Arrivals", startRow=1, startCol=1, header = TRUE)
-aus <- readWorksheet(wb, sheet = "Australia Arrivals", startRow=1, startCol=1, header = TRUE)
-nz <- readWorksheet(wb, sheet = "New Zealand Arrivals", startRow=1, startCol=1, header = TRUE)
-ca <- readWorksheet(wb, sheet = "Canada Arrivals", startRow=1, startCol=1, header = TRUE)
-uk <- readWorksheet(wb, sheet = "U.K. Arrivals", startRow=1, startCol=1, header = TRUE)
+us <- readWorksheet(wb, sheet = "U.S. Arrivals", startRow=1, startCol=1, header = TRUE)[1:2]
+aus <- readWorksheet(wb, sheet = "Australia Arrivals", startRow=1, startCol=1, header = TRUE)[1:2]
+nz <- readWorksheet(wb, sheet = "New Zealand Arrivals", startRow=1, startCol=1, header = TRUE)[1:2]
+ca <- readWorksheet(wb, sheet = "Canada Arrivals", startRow=1, startCol=1, header = TRUE)[1:2]
+uk <- readWorksheet(wb, sheet = "U.K. Arrivals", startRow=1, startCol=1, header = TRUE)[1:2]
 
-us.tb <- readWorksheet(wb, sheet = "U.S. TB", startRow=1, startCol=1, header = TRUE)
-aus.tb <- readWorksheet(wb, sheet = "Australia TB", startRow=1, startCol=1, header = TRUE)
-nz.tb <- readWorksheet(wb, sheet = "New Zealand TB", startRow=1, startCol=1, header = TRUE)
-ca.tb <- readWorksheet(wb, sheet = "Canada TB", startRow=1, startCol=1, header = TRUE)
-uk.tb <- readWorksheet(wb, sheet = "U.K. TB", startRow=1, startCol=1, header = TRUE)
+us.tb <- readWorksheet(wb, sheet = "U.S. TB", startRow=1, startCol=1, header = TRUE)[1:2]
+aus.tb <- readWorksheet(wb, sheet = "Australia TB", startRow=1, startCol=1, header = TRUE)[1:2]
+nz.tb <- readWorksheet(wb, sheet = "New Zealand TB", startRow=1, startCol=1, header = TRUE)[1:2]
+ca.tb <- readWorksheet(wb, sheet = "Canada TB", startRow=1, startCol=1, header = TRUE)[1:2]
+uk.tb <- readWorksheet(wb, sheet = "U.K. TB", startRow=1, startCol=1, header = TRUE)[1:2]
+
+us.mdr <- readWorksheet(wb, sheet = "U.S. MDR TB", startRow=1, startCol=1, header = TRUE)[1:2]
+aus.mdr <- readWorksheet(wb, sheet = "Australia MDR TB", startRow=1, startCol=1, header = TRUE)[1:2]
+nz.mdr <- readWorksheet(wb, sheet = "New Zealand MDR TB", startRow=1, startCol=1, header = TRUE)[1:2]
+ca.mdr <- readWorksheet(wb, sheet = "Canada MDR TB", startRow=1, startCol=1, header = TRUE)[1:2]
+uk.mdr <- readWorksheet(wb, sheet = "U.K. MDR TB", startRow=1, startCol=1, header = TRUE)[1:2]
+
 
 ## cleaning .....
   # remove large number of 'arrivals' from NZ to Nz (status adjusters?)
@@ -71,11 +79,18 @@ uk.tb <- readWorksheet(wb, sheet = "U.K. TB", startRow=1, startCol=1, header = T
 us = us[1:202,]
 
 # Add TB columns to main sheet
-us = merge(us, us.tb, by.x=1, by.y=1 )[,c(1,2,4,8)]
-aus = merge(aus, aus.tb, by.x=1, by.y=1 )[,c(1,2,4,8)]
-nz = merge(nz, nz.tb, by.x=1, by.y=1 )[,c(1,2,4,8)]
-ca = merge(ca, ca.tb, by.x=1, by.y=1 )[,c(1,2,4,8)]
-uk = merge(uk, uk.tb, by.x=1, by.y=1 )[,c(1,2,4,8)]
+us = merge(us, us.tb, by.x=1, by.y=1 )
+aus = merge(aus, aus.tb, by.x=1, by.y=1 )
+nz = merge(nz, nz.tb, by.x=1, by.y=1 )
+ca = merge(ca, ca.tb, by.x=1, by.y=1 )
+uk = merge(uk, uk.tb, by.x=1, by.y=1 )
+
+# Add MDR TB columns to main sheet
+us = merge(us, us.mdr, by.x=1, by.y=1 )
+aus = merge(aus, aus.mdr, by.x=1, by.y=1 )
+nz = merge(nz, nz.mdr, by.x=1, by.y=1 )
+ca = merge(ca, ca.mdr, by.x=1, by.y=1 )
+uk = merge(uk, uk.mdr, by.x=1, by.y=1 )
 
 # rename columns
 names(us) = c("origin", "arrivals", "TB", "MDR")
@@ -118,6 +133,7 @@ The following tables list the top 25 countries of origin for immigrant arrivals 
 
 <<'arrivals'>>=
 library(xtable)
+
 us.rank = us[rev(order(us$arrivals)), c("origin", "host", "arrivals", "percent") ]
 us.rank$origin = reorder(us.rank$origin, -us.rank$arrivals)
 us.top = data.frame(origin = us.rank$origin, 
@@ -148,7 +164,7 @@ uk.top = data.frame(origin = uk.rank$origin,
                     arrivals = uk.rank$arrivals, 
                     percent = uk.rank$percent)
 
-top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,], ca.top[,], uk.top[,])
+top.arrivals = cbind(aus.top[,], ca.top[,], nz.top[,],  uk.top[,], us.top[,] )
 # print top 25
 
       t = top.arrivals[1:25, ]
@@ -158,12 +174,42 @@ top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,], ca.top[,], uk.top[,])
                       "UK-Immigrants", "UK-Arrivals", "UK-% Total", 
                       "US-Immigrants", "US-Arrivals", "US-% Total"
                       )
-      cols.comma = c(2,5,8,11,14)  # identify columns that need commas for thousands
-      cols.dec = c(0,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1)   # identify columns that need decimals
+      cols.comma = c(2,5,8,11,14)  #  columns that need commas for thousands
+      cols.dec = c(0,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1)   #  columns that need decimals
       t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
-      print(xtable(t, caption = "Top 25 Countries of Origin for Arrivals, 2005-2009", digits=1 ,
-                    align=c('l', rep('r', 15))),
-                     floating.environment='sidewaystable', caption.placement='top')
+
+# create spanning headers 
+header <- function() {
+    first <- "\\hline \\multicolumn{1}{c}{} & "
+    middle <- paste(
+            paste("\\multicolumn{2}{c}{", c("Australia"), "}", sep = ""),
+            paste("\\multicolumn{2}{c}{", c("Canada"), "}", sep = ""),
+            collapse = " & ")
+    last <- paste("\\\\ \\cline{2-4}", 
+#                   "\\cline{5-7}", 
+                  sep = " ")
+    string <- paste(first, middle, last, collapse = "")
+    list(pos = list(-1), command = string)
+}
+
+  xt = xtable(t, caption = "Top 25 Countries of Origin for Arrivals, 2005-2009",
+                   digits=1 ,
+                    align=c('l', rep('r', 15))
+                   )
+
+#   align(xt) = "|l|l|X|X|l|X|X|l|X|X|l|X|X|l|X|X|"
+
+  print(xt,
+        floating.environment = 'sidewaystable', 
+        caption.placement = 'top'   ,
+#         hline.after = c(0,nrow(xt)),
+#         add.to.row = header(),
+        scalebox = 0.6,
+#         size="\\small" , 
+#         tabular.environment="tabularx",
+#         width="\\textwidth"
+            )
+
 @
 
 <<'tb'>>=
@@ -199,7 +245,7 @@ uk.top = data.frame(origin = uk.rank$origin,
                     percent = uk.rank$percent)
 
 
-top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,], ca.top[,], uk.top[,])
+top.arrivals = cbind(aus.top[,], ca.top[,], nz.top[,],  uk.top[,], us.top[,] )
 # print top 25
 
       t = top.arrivals[1:25, ]
@@ -214,8 +260,12 @@ top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,], ca.top[,], uk.top[,])
       t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
       print(xtable(t, caption = "Top 25 Countries of Origin for Foreign-born Tuberuclosis, 2005-2009",
                    digits=1 ,
-                    align=c('l', rep('r', 15))),
-                     floating.environment='sidewaystable', caption.placement='top')
+                    align=c('l', rep('r', 15))
+                   ),
+            scalebox = 0.6, 
+            floating.environment='sidewaystable', 
+            caption.placement='top'
+            )
 @
 
 <<'mdr'>>=
@@ -251,7 +301,7 @@ uk.top = data.frame(origin = uk.rank$origin,
                     percent = uk.rank$percent)
 
 
-top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,], ca.top[,], uk.top[,])
+top.arrivals = cbind(aus.top[,], ca.top[,], nz.top[,],  uk.top[,], us.top[,] )
 # print top 25
 
       t = top.arrivals[1:25, ]
@@ -266,8 +316,11 @@ top.arrivals = cbind(aus.top[,], nz.top[,], us.top[,], ca.top[,], uk.top[,])
       t[, cols.comma] = prettyNum( t[, cols.comma], big.mark=",", drop0trailing = TRUE)
       print(xtable(t, caption = "Top 25 Countries of Origin for Foreign-born MDR-Tuberuclosis, 2005-2009",
                    digits=1 ,
-                    align=c('l', rep('r', 15))),
-                     floating.environment='sidewaystable', caption.placement='top')
+                   align=c('l', rep('r', 15))),
+            scalebox = 0.6,
+            floating.environment='sidewaystable', 
+            caption.placement='top'
+            )
 @
 
 <<'tables', eval=FALSE>>=
@@ -291,7 +344,7 @@ print( xtable(a[1:25,], caption = "New Zealand: Top 25 Countries of Origin, 2005
 @
 
 \section{Intersection of Immigration}
-The following charts show the top 25 countries of origin for the combined percent arrivals (Figure 1.), combined foreign-born tuberculosis (TB) cases (Figure 2.), and the combined foreign-born multi-drug resistant tuberculosis (MDR-TB) cases (Figure 3.).
+The following charts show the top 25 countries of origin for percent arrivals (Figure 1.), foreign-born tuberculosis (TB) cases (Figure 2.), and foreign-born multi-drug resistant tuberculosis (MDR-TB) cases (Figure 3.) within each of the 'big 5' host countries.  The order of the origin coutnries is presented in descending order of the cummulative percentage across all the 'big 5' host countries.
 
 <<'plot-arrivals', fig.cap='Immigration Arrivals: Top Shared Countries of Origin'>>=
 require(ggplot2)
@@ -309,7 +362,8 @@ data = big5.ar
 ggplot(data=data) +
   geom_bar(aes(x= origin , y=percent , fill=host )) + 
   ylab("Percent Immigration Arrivals") +
-  coord_flip()
+  coord_flip() +
+  facet_grid(. ~ host )
 
 # chart us arrivals
 # ggplot(data=big5[big5$host %in% "US" & big5$percent>=.1,]) +
@@ -332,7 +386,8 @@ data = big5.tb
 ggplot(data=data) +
   geom_bar(aes(x= origin , y=percent.tb , fill=host )) + 
   ylab("Percent Imported TB") +
-  coord_flip()
+  coord_flip()+
+  facet_grid(. ~ host )
 
 @
 
@@ -349,11 +404,12 @@ data = big5.mdr
 ggplot(data=data) +
   geom_bar(aes(x= origin , y=percent.mdr , fill=host )) + 
   ylab("Percent Imported MDR-TB") +
-  coord_flip()
+  coord_flip()+
+  facet_grid(. ~ host )
 
 @
 
-<<'map-ar', fig.cap='Foreign-Born: Percent Countries of Origin', warning=FALSE>>=
+<<'map-ar', fig.cap='Foreign-Born: Percent Countries of Origin', warning=FALSE, eval=FALSE>>=
 library(maptools) 
 library(ggplot2) 
 
@@ -389,7 +445,7 @@ big5.map.ar = ggplot(big5.map.ar.data) + map_world +
 big5.map.ar
 @
 
-<<'map-tb', fig.cap="Tuberculosis: Percent Foreign-born Cases", warning=FALSE>>=
+<<'map-tb', fig.cap="Tuberculosis: Percent Foreign-born Cases", warning=FALSE, eval=FALSE>>=
 big5.map.tb.data = merge(big5.tb, world, by.x="origin", by.y="NAME", all.y=TRUE)  # top 20 countries
 
 big5.map.tb = ggplot(big5.map.tb.data) + 
@@ -402,7 +458,7 @@ big5.map.tb = ggplot(big5.map.tb.data) +
 big5.map.tb
 @
 
-<<'map-mdr', fig.cap="MDR-TB: Percent Foreign-born Cases", warning=FALSE>>=
+<<'map-mdr', fig.cap="MDR-TB: Percent Foreign-born Cases", warning=FALSE, eval=FALSE>>=
 big5.map.mdr.data = merge(big5.mdr, world, by.x="origin", by.y="NAME", all.y=TRUE)  # top 20 countries
 
 big5.map.mdr = ggplot(big5.map.mdr.data) + 
@@ -415,15 +471,15 @@ big5.map.mdr = ggplot(big5.map.mdr.data) +
 big5.map.mdr
 @
 \section{Comparison of Foreign-Born TB and MDR-TB Rates by Originating Country}
-Let's compare the rate of TB and MDR-TB by country of origin among the three host countries.  
+% Let's compare the rate of TB and MDR-TB by country of origin among the three host countries.  
+% 
+% \begin{itemize}
+% \item We will restrict analysis to those origin countries where each host-origin country pairs has at least 100 TB cases. 
+% \item The TB rate is calculated as the number of TB cases per 100,000 arrivals. 
+% \item MDR-TB rate is calculated as the number of MDR-TB cases divided by the number of TB cases, expressed as a percentage.
+% \end{itemize}
 
-\begin{itemize}
-\item We will restrict analysis to those origin countries where each host-origin country pairs has at least 100 TB cases. 
-\item The TB rate is calculated as the number of TB cases per 100,000 arrivals. 
-\item MDR-TB rate is calculated as the number of MDR-TB cases divided by the number of TB cases, expressed as a percentage.
-\end{itemize}
-
-\subsection{Comparison of Tuberculosis Rates (/100,000 population) Diagnosed at Immigrant Application}
+\subsection{Comparison of tuberculosis rates (per 100,000 population) diagnosed at time of immigrant application}
 <<'tb-rates', >>=
 # examine tb rate among top 4 origin countries (excl PNG)
 tb = big5.tb[big5.tb$TB >= 50,]
@@ -439,8 +495,8 @@ latex(x, caption= "Comparison of Tuberculosis Rates (/100,000 population) among 
 
 @
 
-Test for difference in TB rates
-<<'tb-rate-test'>>=
+% Test for difference in TB rates
+<<'tb-rate-test', eval=FALSE>>=
 # Test for difference in rates
 i = c(1004,70173,285,24180,2869,1913293)
 india = matrix(i,ncol=2, byrow=T)
@@ -456,7 +512,7 @@ chisq.test(china)
 @
 
 
-\subsection{Comparison of MDR-TB Rates (/100 TB case) Diagnosed at Immigrant Application}
+\subsection{Comparison of MDR-TB rates (per 100 TB cases) diagnosed at time of immigrant application}
 <<'mdr-tb-rates'>>=
 # examine mdr-tb rate among top 4 origin countries (excl PNG)
 mdr = big5.mdr[big5.mdr$TB >= 50,]
@@ -472,8 +528,8 @@ latex(x, caption= "Comparison of MDR-TB Rates (/100 TB case) among Foreign-born"
 
 @
 
-Test for difference in MDR-TB rates
-<<'mdr-rate-test'>>=
+% Test for difference in MDR-TB rates
+<<'mdr-rate-test', eval=FALSE>>=
 # Test for difference in rates
 i = c(19,1004,1,285,51,2869)
 india = matrix(i,ncol=2, byrow=T)
