@@ -3,7 +3,7 @@
 # ==== run in R session
 #      system(R -e "source('~/incomingR.R')")
             
-#  ===== Get records from Access database.  Thereafter, use R to geocode.
+#  ===== Get records from Access database.  Thereafter, use R to geocode. ====
 # library(RODBC)  
 #      edn.geocode = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/EDN geocode.accdb"
 #      edn.con = odbcConnectAccess2007(edn.geocode)
@@ -47,7 +47,7 @@
 #      directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
 #      save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))
   
-# ==== open file
+# ==== open file  ====
 
      directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
      load(paste(directory, "edn.geo.rda", sep=""))
@@ -55,13 +55,117 @@
      # confirm load
      library(lubridate)
 #      table(year(edn.geo$ArrivalDate), useNA = 'always')
-     
-# ==== get new records from EDN
-     
-     
+ 
+# Deduplicate  ====
+dedupe.edn.geo = function(){
+     cat("there are ", nrow(edn.geo), " records.  ")
+     #      Find records with identical AlienID and AddressID
+     dupes = which(duplicated(edn.geo[,c("AlienID","AddressID")]))
+     edn.dupes = edn.geo[dupes,]
+     edn.dupes = edn.dupes[order(edn.dupes$ArrivalDate, edn.dupes$AlienID, 
+                                 decreasing=TRUE, na.last = TRUE),] 
+     cat("Of these, ", nrow(edn.dupes), " have same alienID and AddressID.  ")
+     #      edn.dupes[, c("AlienID", "AddressID", "state", "Country", "ArrivalDate", "NotificationDate")]
 
+     #      Find records with identical AlienID and select one with most recent (largest) AddressID
+     dupes = edn.geo[duplicated(edn.geo[,c("AlienID")]), "AlienID"]
+     edn.dupes = edn.geo[edn.geo$AlienID %in% dupes,]
+     edn.dupes = edn.dupes[order(edn.dupes$AlienID, edn.dupes$AddressID, 
+                                 decreasing=TRUE, na.last = TRUE),]
+     cat("there are ", nrow(edn.dupes), " with same alienID. ")
+  
+     library(plyr)
+     keepers = ddply(edn.dupes[, c("AlienID", "AddressID")],  .(AlienID), 
+                    summarise, BestAddressID = max(AddressID)
+                     )
+     
+     cat("Of these, ", nrow(keepers), " should be kept.  ")
+     # get addressIDs for all records in duplicates that are not keepers
+     outdated = edn.dupes[!edn.dupes$AddressID %in% keepers$BestAddressID,"AddressID"]
+     cat("Of these, ", length(outdated), " with old AddressID.  ")
 
-# ==== geocode records
+     # remove outdated records
+     edn.geo = edn.geo[!edn.geo$AddressID %in% outdated,]
+     cat("there are now ", nrow(x), " records.  ")
+
+     # Save edn.geo to secure directory
+     save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))
+     }
+
+# ==== get new records from EDN ====
+     library(RODBC)
+     edn <-odbcConnect(dsn='edn')
+
+     updateDataSQL =  # paragraph returns included for readablility. 
+          "SELECT TOP 3000 
+               dbo_AlienAddress.AddressID, 
+               dbo_AlienAddress.AlienID, 
+               dbo_AlienAddress.Address1, 
+               dbo_AlienAddress.City, 
+               dbo_AlienAddress.State, 
+               dbo_AlienAddress.Zip, 
+               dbo_Alien.DateOfArrival as ArrivalDate, 
+               dbo_AlienAddress.DateOfNotification as NotificationDate, 
+               dbo_AlienDemographics.PresentCountryOfResidence AS Country, 
+               dbo_AlienDemographics.ConsulateCity as Consulate, 
+               dbo_AlienClassification.ClassB, 
+               dbo_Alien.TBClassID,
+               dbo_Alien.AlienType,
+               CASE WHEN dbo_Alien.immigranttype = 'I' THEN 'Immigrant' 
+                    WHEN dbo_Alien.immigranttype = 'K1' THEN 'K1-FIANCEE' 
+                    WHEN dbo_Alien.immigranttype = 'P-N' THEN 'Parolee no benefits' 
+                    WHEN dbo_Alien.refugeetype = 'A' THEN 'Asylee' 
+                    WHEN dbo_Alien.refugeetype = 'P-R' THEN 'Parolee with refugee benefits' 
+                    WHEN dbo_Alien.refugeetype = 'R' THEN 'Refugee' 
+                    WHEN dbo_Alien.refugeetype = 'SIV' THEN 'Special Immigrant Visa' 
+                    ELSE 'Unknown' END as VisaType
+               
+               FROM (    Select 
+                         dbo_AlienAddress.AlienID, 
+                         Max(dbo_AlienAddress.DateOfNotification) AS MaxOfDateOfNotification, 
+                         Max(dbo_AlienAddress.addressID) AS AddressID
+                         FROM dbo_AlienAddress
+                         GROUP BY dbo_AlienAddress.AlienID
+                    ) as MostRecentAlienAddress 
+                    INNER JOIN (((dbo_AlienAddress 
+                    INNER JOIN dbo_AlienDemographics ON dbo_AlienAddress.AlienID = dbo_AlienDemographics.AlienID) 
+                    INNER JOIN dbo_AlienClassification ON dbo_AlienAddress.AlienID = dbo_AlienClassification.AlienID) 
+                    INNER JOIN dbo_Alien ON dbo_AlienAddress.AlienID = dbo_Alien.AlienID) 
+                    ON MostRecentAlienAddress.AddressID = dbo_AlienAddress.AddressID
+               ORDER BY dbo_AlienAddress.DateOfNotification DESC"
+
+     # remove paragraph marks (\n) from query
+     query = gsub("\n", "", updateDataSQL)
+     query = gsub("dbo_", "", query)
+
+     arrivals <- sqlQuery(edn, query)
+
+# Add records to existing data set  ====
+     # load edn dataset
+     directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
+     load(paste(directory, "edn.geo.rda", sep=""))
+     format(nrow(edn.geo), big.mark=",")
+
+     # find records from arrivals not in edn.geo
+     library(compare)
+     comparison <- compare(arrivals$AddressID, edn.geo$AddressID, allowAll=TRUE)
+     comparison
+     new.records = merge(arrivals, edn.geo, by = c('AlienID', 'AddressID'), 
+                         all.x=TRUE, suffixes="")
+     
+     cat("there are ", nrow(new.records), " new records from ", 
+         as.character(min(new.records$NotificationDate)), " to ",
+         as.character(max(new.records$NotificationDate)))
+
+     # add new records to edn.geo
+     library(plyr)
+     edn.geo = rbind.fill(edn.geo, new.records)
+     cat("there are now ", format(nrow(edn.geo), big.mark=","), " in edn.geo")
+     
+     # Save edn.geo to secure directory
+           save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))
+
+# ==== geocode records  ====
      
      # === progress bar?
      # progress bar
