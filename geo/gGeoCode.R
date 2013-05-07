@@ -8,9 +8,10 @@
 library(RCurl)
 library(RJSONIO)
 
-construct.geocode.url <- function(address, return.call = "json", sensor = "false") {
-     #   root <- "http://maps.google.com/maps/api/geocode/"
-  root = "http://maps.googleapis.com/maps/api/geocode/"
+construct.geocode.url <- function(address, return.call = "json", 
+                                  sensor = "false", http = "http://") {
+#      root <- "https://maps.google.com/maps/api/geocode/"
+     root = paste( http, "maps.googleapis.com/maps/api/geocode/", sep='')
   
   u <- paste(root, return.call, "?address=", address, "&sensor=", sensor, sep = "")
   return(URLencode(u))
@@ -38,3 +39,4 @@ gGeoCode <- function(address,verbose=FALSE) {
 
 # test: 
 gGeoCode("210 third Ave, Decatur, Ga, 30030")
+
