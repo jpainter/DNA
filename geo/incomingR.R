@@ -14,24 +14,25 @@
  
 # Deduplicate function ====
 dedupe.edn.geo = function(){
-     # remove records with missing AlienID or missing AddressID
-     num.missing = sum(is.na(edn.geo$AlienID) | is.na(edn.geo$AddressID))
-     
+
      cat("there are ", nrow(edn.geo), " records.  \n")
      #      Find records with identical AlienID and AddressID
-     dupes = which(duplicated(edn.geo[,c("AlienID","AddressID")]))
-     edn.dupes = edn.geo[dupes,]
-     edn.dupes = edn.dupes[order(edn.dupes$ArrivalDate, edn.dupes$AlienID, 
-                                 decreasing=TRUE, na.last = TRUE),] 
-     cat("Of these, ", nrow(edn.dupes), " have same alienID and AddressID. \n")
-     #      edn.dupes[, c("AlienID", "AddressID", "state", "Country", "ArrivalDate", "NotificationDate")]
+     dupes = duplicated(edn.geo[,c("AlienID","AddressID")])
+     cat("Of these, ", sum(dupes), " have same alienID and AddressID. \n")
+     
+     # remove outdated records
+     edn.geo = edn.geo[!dupes,]
+     cat("After removing duplicates, there are now ", nrow(edn.geo), " records. \n ")
 
-     #      Find records with identical AlienID and select one with most recent (largest) AddressID
-     dupes = which(duplicated(edn.geo[,c("AlienID")]))
+     # To eliminate aliens with >1 address, find records with identical AlienID 
+     # and select one with most recent (largest) AddressID
+     dupes = duplicated(edn.geo[,c("AlienID")])
+     cat("There are ", sum(dupes), " alienID that are duplicated. \n")
      edn.dupes = edn.geo[dupes,]
+     edn.dupes = edn.geo[edn.geo$AlienID %in% edn.geo[dupes,"AlienID"],]
      edn.dupes = edn.dupes[order(edn.dupes$AlienID, edn.dupes$AddressID, 
                                  decreasing=TRUE, na.last = TRUE),]
-     cat("There are ", nrow(edn.dupes), " with same alienID and Ad. \n")
+
   
      library(plyr)
      keepers = ddply(edn.dupes[, c("AlienID", "AddressID")],  .(AlienID), 
@@ -44,15 +45,16 @@ dedupe.edn.geo = function(){
      cat("Of these, ", length(outdated), " with old AddressID.  \n")
 
      # remove outdated records
-     edn.geo = edn.geo[!edn.geo$AddressID %in% outdated,]
+     edn.geo = edn.geo[!(edn.geo$AddressID %in% outdated),]
      cat("There are now ", nrow(edn.geo), " records. \n ")
-
+    
+     return(edn.geo)
      # Save edn.geo to secure directory
      # save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))
      }
 
      # deduplicate
-     dedupe.edn.geo()
+     edn.geo = dedupe.edn.geo()
      
      # Save edn.geo to secure directory
      save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))
@@ -60,9 +62,11 @@ dedupe.edn.geo = function(){
 # ==== get new records from EDN ====
      library(RODBC)
      edn <-odbcConnect(dsn='edn')
+     
+     #### NOTE: query currently set to retreive records from years >2010 only
 
      updateDataSQL =  # paragraph returns included for readablility. 
-          "SELECT TOP 3000 
+          "SELECT 
                dbo_AlienAddress.AddressID, 
                dbo_AlienAddress.AlienID, 
                dbo_AlienAddress.Address1, 
@@ -97,42 +101,45 @@ dedupe.edn.geo = function(){
                     INNER JOIN dbo_AlienClassification ON dbo_AlienAddress.AlienID = dbo_AlienClassification.AlienID) 
                     INNER JOIN dbo_Alien ON dbo_AlienAddress.AlienID = dbo_Alien.AlienID) 
                     ON MostRecentAlienAddress.AddressID = dbo_AlienAddress.AddressID
+               where year(dbo_Alien.DateOfArrival)>2010 and 
+                    year(dbo_AlienAddress.DateOfNotification)>2010
                ORDER BY dbo_AlienAddress.DateOfNotification DESC"
 
      # remove paragraph marks (\n) from query
      query = gsub("\n", "", updateDataSQL)
      query = gsub("dbo_", "", query)
-
+     
+     # set strings to not be imported as factors, then run query
+     options(stringsAsFactors = FALSE)
      arrivals <- sqlQuery(edn, query)
 
 # Add records to existing data set  ====
+
      # load edn dataset
      directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
      load(paste(directory, "edn.geo.rda", sep=""))
+
      format(nrow(edn.geo), big.mark=",")
-     table(year(edn.geo$ArrivalDate), edn.geo$Status, useNA = 'always')
+     library(lubridate)
+     t = table(year(edn.geo$ArrivalDate), edn.geo$Status, useNA = 'always')
+     t = addmargins(t, c(1,2))
+     print(t)
      
-     # find records from arrivals not in edn.geo
-#      library(compare)
-#      comparison <- compare(arrivals$AddressID, edn.geo$AddressID, allowAll=TRUE)
-#      comparison
-#      new.records = merge(arrivals, edn.geo, by = c('AlienID', 'AddressID'), 
-#                          all.x=TRUE, suffixes="")
-#      
-#      cat("there are ", nrow(new.records), " new records from ", 
-#          as.character(min(new.records$NotificationDate)), " to ",
-#          as.character(max(new.records$NotificationDate)))
+     # find new records in arrival data that have new AddressId
+     oldAddress = arrivals$AddressID %in% edn.geo$AddressID
+     newRecords = arrivals[!oldAddress,]
+     cat("there are ", format(nrow(newRecords), big.mark=","), " new records to add to edn.geo")
 
      # add new records to edn.geo
      library(plyr)
-     edn.geo = rbind.fill(edn.geo, arrivals)
+     edn.geo = rbind.fill(edn.geo, newRecords)
      cat("there are now ", format(nrow(edn.geo), big.mark=","), " in edn.geo")
      
      # deduplicate
-     dedupe.edn.geo()
+     edn.geo = dedupe.edn.geo()
 
      # Save edn.geo to secure directory
-           save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))
+     save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))
 
 # ==== geocode records  ====
      
@@ -161,24 +168,33 @@ dedupe.edn.geo = function(){
      nrow(edn.geo)
      
      # index records without geocode
-     recordsToGeocode = which( !(edn.geo$Status %in% "OK") 
-                               & !(edn.geo$Status %in% "ZERO_RESULTS"))
-     print(paste(format(nrow(edn.geo[recordsToGeocode,]), 
-                        big.mark=","), "records without geocode"))
+     cat("there are ", format(nrow(edn.geo), big.mark=","), " records in edn.geo")
+     hasGeocode = edn.geo$Status %in% c("OK", "ZERO_RESULTS")
+     print(paste("There are ", 
+                 format(nrow(edn.geo[!hasGeocode,]), big.mark=","),
+                 "records without geocode"))
+
+     # table of geocode for records since 2006  
+     t = table(year(edn.geo[, "NotificationDate"]), 
+           edn.geo[, "Status"], 
+           useNA = 'always')
+     t = addmargins(t,c(1,2))
+     print(t)
      
      ednGeocode = function(n=10, data = edn.geo){
+          source('gGeoCode.R')
           start=Sys.time()
           # sort records without geocode
-          recordsToGeocode = which( !(edn.geo$Status %in% "OK") 
-                                    & !(edn.geo$Status %in% "ZERO_RESULTS"))
-          # limit data to number of records to geocode
-          update.data = data[recordsToGeocode,]
+          recordsToGeocode = !(edn.geo$Status %in% c("OK", "ZERO_RESULTS"))
           cat("At start, there are ", 
               format(nrow(data[recordsToGeocode,]), big.mark=","), 
               "records without geocode\n")
           
+          # limit data to number of records to geocode
+          update.data = data[recordsToGeocode,]
           update.data = update.data[order(update.data$NotificationDate, 
                                           decreasing=TRUE),]
+          update.data = update.data[1:n,]
           
           # geocode while status is 'ok'
           ok = 0
@@ -212,9 +228,6 @@ dedupe.edn.geo = function(){
                update.data[i, "Latitude"] = as.numeric(geocode[2])
                update.data[i, "Longitude"] = as.numeric(geocode[3])
                update.data[i, "Accuracy"] = geocode[4]
-                     
-               
- 
           }
           cat( ok, " of" , i, "records were geocoded.\n")
           
@@ -223,30 +236,37 @@ dedupe.edn.geo = function(){
           return(update.data)
      }
      
-     new.geo = ednGeocode(n=20)
+     new.geo = ednGeocode(n=2000)
+     nrow(new.geo)
      
      # update edn.geo with new geo
-     merge.sql = "Update "
-     edn.geo = 
-     
-     eg = edn.geo
-     rownames(eg) = eg$AddressID
-rownames(replacement) = replacement$Id
+     rownames(edn.geo) = edn.geo$AddressID
+     rownames(new.geo) = new.geo$AddressID
+     edn.geo[rownames(new.geo), ] = new.geo
 
-original[rownames(replacement), ] = replacement
-     
+     ## save file
+     save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))     
      
      recordsToGeocode = which( !(edn.geo$Status %in% "OK") &
                                     !(edn.geo$Status %in% "ZERO_RESULTS"))
      cat("Now there are",format(length(recordsToGeocode), big.mark=","), 
     "records without geocode\n")
-
-     save(edn.geo, file = paste(directory, "edn.geo.rda", sep="")) 
      
-     badDate = edn.geo$NotificationDate<mdy("January 1 2006")
-     table(year(edn.geo[!badDate, "NotificationDate"]), 
-           edn.geo[!badDate, "Status"], 
+     # number notifications by year
+
+     t =  table(year(edn.geo$NotificationDate), 
+           edn.geo$Status, 
            useNA = 'always')
+     t = addmargins(t, c(1:2))
+     print(t)
+
+     # number arrivals by year
+     badDate = edn.geo$ArrivalDate<mdy("January 1 2006")
+     t =  table(year(edn.geo[!badDate, "ArrivalDate"]), 
+                edn.geo[!badDate, "Status"], 
+                useNA = 'always')
+     t = addmargins(t, c(1:2))
+     print(t)
 
      
  #  ====  Add long names for country and state ====
