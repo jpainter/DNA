@@ -47,7 +47,7 @@
                            ) {
 
 # if only one country chosen, then color spots by visa
-     if (length(country)==1 & !(country[1] %in% c("all", "All"))){
+     if (is.na(country)==FALSE & !(country[1] %in% c("all", "All"))){
           color.var = "visa"
      }
 # data filters
@@ -145,7 +145,7 @@
      if (!is.na(top)){
           cluster.type = paste("Top ", top, " notification clusters", sep  = "")
      } else {
-          cluster.type = paste("Clusters of at least ", min, " ", sep  = "")
+          cluster.type = paste("Arrivals of at least ", min, " ", sep  = "")
      }
      title = paste( cluster.type, 
                     "\n",
@@ -187,8 +187,8 @@
            scale_size_continuous(limits=c(min(hot.spots$count), 
                                           max(hot.spots$count)),
                                  range = c(2, 10)
-                             ) 
-#           + scale_colour_brewer(type="qual", palette="Set1") 
+                             ) +
+          scale_colour_brewer(type="seq", palette="Set1") 
  
      # print
      if ( sum(rownames(hot.spots)=="NA")>0){ print(base.map)} else {print(spots)}

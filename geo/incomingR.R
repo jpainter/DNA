@@ -215,6 +215,7 @@ dedupe.edn.geo = function(){
                geocode = gGeoCode(address)
                
                if (geocode[1] %in% "OVER_QUERY_LIMIT"){ 
+                    print("OVER THE QUERY LIMIT")
                     return(update.data)
                     # DayInSeconds = 5; 26*60*60
                     # cat("over query limit at", Sys.time())
@@ -228,6 +229,7 @@ dedupe.edn.geo = function(){
                update.data[i, "Latitude"] = as.numeric(geocode[2])
                update.data[i, "Longitude"] = as.numeric(geocode[3])
                update.data[i, "Accuracy"] = geocode[4]
+               Sys.sleep(.1) # wait 0.1 seconds between calls
           }
           cat( ok, " of" , i, "records were geocoded.\n")
           
@@ -236,7 +238,8 @@ dedupe.edn.geo = function(){
           return(update.data)
      }
      
-     new.geo = ednGeocode(n=2000)
+     new.geo = ednGeocode(n=500)
+     new.geo = new.geo[new.geo$Status %in% c("OK", "ZERO_RESULTS"),]
      nrow(new.geo)
      
      # update edn.geo with new geo
@@ -246,6 +249,7 @@ dedupe.edn.geo = function(){
 
      ## save file
      save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))     
+     
      
      recordsToGeocode = which( !(edn.geo$Status %in% "OK") &
                                     !(edn.geo$Status %in% "ZERO_RESULTS"))

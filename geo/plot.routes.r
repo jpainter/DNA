@@ -22,29 +22,39 @@ plot.routes = function( data = gcircles.rc,
      load("worldmap.cp.RData")
      load("states.cp.RData")
      
-     # route.select=which(gcircles.rc$AlienType %in% 'R' & gcircles.rc$count>1000)
+     # Country
      if(country[1] %in% "all")   {COUNTRY =  rep(TRUE, nrow(data))} else 
                               {COUNTRY =  data$Country %in% country}
      
      # arrange coutnries alphabetically
      country= country[order(country)]
      
+     # Dates
+     library(lubridate)
+     my
+     
+     
      title = paste("EDN notification of arrivals from ", paste(country, collapse=", ") , ",\n",  
                      date1 , " - " , date2, 
                      sep = "")
-                      
+     
+     # Minimum number of routes to display
      MIN = data$count > min 
      
+     # visa type
      VISA = data$VisaType %in% visa
      
-     route.select=which( COUNTRY & MIN & VISA )
-     
+     # data selection     
+     route.select=which( COUNTRY & MIN & VISA )  
      route.data = data[route.select,]
 
+
+     
+     ## plot -----
      countries = which( worldmap.cp$region %in% country)
      
      states = which( states.cp$region %in% unique(route.data$state))
-
+     
      g= ggplot() +
  
           # world map

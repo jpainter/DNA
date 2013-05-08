@@ -12,15 +12,17 @@ construct.geocode.url <- function(address, return.call = "json",
                                   sensor = "false", http = "http://") {
 #      root <- "https://maps.google.com/maps/api/geocode/"
      root = paste( http, "maps.googleapis.com/maps/api/geocode/", sep='')
+#      root = "https://maps.googleapis.com/maps/api/geocode/xml"
+#      root = "http://maps.googleapis.com/maps/api/geocode/"
   
   u <- paste(root, return.call, "?address=", address, "&sensor=", sensor, sep = "")
   return(URLencode(u))
 }
 
-gGeoCode <- function(address,verbose=FALSE) {
+gGeoCode <- function(address,verbose=FALSE, http="http://") {
   if(verbose) cat(address,"\n")
   
-  u <- construct.geocode.url(address)
+  u <- construct.geocode.url(address, http)
   doc <- getURL(u)
   x <- fromJSON(doc, simplify = FALSE)
   
@@ -38,5 +40,4 @@ gGeoCode <- function(address,verbose=FALSE) {
 }
 
 # test: 
-gGeoCode("210 third Ave, Decatur, Ga, 30030")
-
+# gGeoCode("210 third Ave, Decatur, Ga, 30030", http="http://")
