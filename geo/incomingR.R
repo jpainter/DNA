@@ -239,7 +239,7 @@ dedupe.edn.geo = function(){
      }
      
      # geocoding....
-     new.geo = ednGeocode(n=2490, header="https://")
+     new.geo = ednGeocode(n=500, header="http://")
      new.geo = new.geo[new.geo$Status %in% c("OK", "ZERO_RESULTS"),]
      nrow(new.geo)
      
