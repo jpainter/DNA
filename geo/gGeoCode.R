@@ -8,22 +8,30 @@
 library(RCurl)
 library(RJSONIO)
 
-construct.geocode.url <- function(address, return.call = "json", 
-                                  sensor = "false", http = "http://") {
-#      root <- "https://maps.google.com/maps/api/geocode/"
-     root = paste( http, "maps.googleapis.com/maps/api/geocode/", sep='')
-#      root = "https://maps.googleapis.com/maps/api/geocode/xml"
-#      root = "http://maps.googleapis.com/maps/api/geocode/"
-  
-  u <- paste(root, return.call, "?address=", address, "&sensor=", sensor, sep = "")
-  return(URLencode(u))
+construct.geocode.url <- function(address, 
+                                  return.call = "json", 
+                                  sensor = "false",
+                                  header="http://") {
+     root <- paste(header, "maps.googleapis.com/maps/api/geocode/", sep="")
+     u <- paste(root, return.call, "?address=", address, "&sensor=", sensor, sep = "")
+     return(URLencode(u))
 }
 
 gGeoCode <- function(address,verbose=FALSE, http="http://") {
-  if(verbose) cat(address,"\n")
+
+  u <- construct.geocode.url(address, header=http)
+  if(verbose) {
+       cat("address : ", address, "\n")
+       cat("u : ", u, "\n")
+  }
   
-  u <- construct.geocode.url(address, http)
-  doc <- getURL(u)
+  doc <- getURL(u  ,
+                .opts = list(capath = system.file("CurlSSL", "cacert.pem", 
+                                                  package = "RCurl"), 
+                             ssl.verifypeer = FALSE))
+  
+  if(verbose) { cat("doc : ", doc, "\n")  }
+  
   x <- fromJSON(doc, simplify = FALSE)
   
   if(x$status=="OK") {
@@ -40,4 +48,9 @@ gGeoCode <- function(address,verbose=FALSE, http="http://") {
 }
 
 # test: 
-# gGeoCode("210 third Ave, Decatur, Ga, 30030", http="http://")
+# gGeoCode("210 Third Ave, Decatur, Ga, 30030", http="https://", verbose=TRUE)
+# gGeoCode("1600 Clifton Road, Atlnta, Ga, 30333", http="https://", verbose=TRUE)
+
+# to avoid error with https, see 
+# http://stackoverflow.com/questions/3442781/rgoogledocs-or-rcurl-giving-ssl-certificate-problem
+#  options(RCurlOptions = list(capath = system.file("CurlSSL", "cacert.pem", package = "RCurl"), ssl.verifypeer = FALSE))

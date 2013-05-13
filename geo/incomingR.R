@@ -181,7 +181,7 @@ dedupe.edn.geo = function(){
      t = addmargins(t,c(1,2))
      print(t)
      
-     ednGeocode = function(n=10, data = edn.geo){
+     ednGeocode = function(n=10, data = edn.geo, header="http://"){
           source('gGeoCode.R')
           start=Sys.time()
           # sort records without geocode
@@ -212,7 +212,7 @@ dedupe.edn.geo = function(){
                # 'If found, remove # and number.
                # address = address
 
-               geocode = gGeoCode(address)
+               geocode = gGeoCode(address, http=header)
                
                if (geocode[1] %in% "OVER_QUERY_LIMIT"){ 
                     print("OVER THE QUERY LIMIT")
@@ -238,7 +238,8 @@ dedupe.edn.geo = function(){
           return(update.data)
      }
      
-     new.geo = ednGeocode(n=500)
+     # geocoding....
+     new.geo = ednGeocode(n=2490, header="https://")
      new.geo = new.geo[new.geo$Status %in% c("OK", "ZERO_RESULTS"),]
      nrow(new.geo)
      
