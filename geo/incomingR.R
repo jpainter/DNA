@@ -1,8 +1,4 @@
 
-
-# ==== run in R session
-#      system(R -e "source('~/incomingR.R')")
-            
 # ==== open file  ====
 
      directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
@@ -141,57 +137,33 @@ dedupe.edn.geo = function(){
      # Save edn.geo to secure directory
      save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))
 
-# ==== geocode records  ====
+    format(nrow(edn.geo), big.mark=",")
+    t = table(year(edn.geo$ArrivalDate), edn.geo$Status, useNA = 'always')
+    t = addmargins(t, c(1,2))
+    print(t)
      
-     # === progress bar?
-     # progress bar
-     #      library(R.utils)
-     #      total <- 20
-     #      # create progress bar
-     #      pb <- txtProgressBar(min = 0, max = total, style = 3)
-     #      for(i in 1:total){
-     #           Sys.sleep(0.1)
-     #           # update progress bar
-     #           setTxtProgressBar(pb, i)
-     #      }
-     #      close(pb)
-     
-     # see google geocode from 
-     ## http://stackoverflow.com/questions/3257441/geocoding-in-r-with-google-maps
-     ### modified function to return status and accuracy
-     
-     source("gGeoCode.R")     
-
-     # order by oldest record in this year, 
-     # then previous years (e.g. by Year (desc), Notification (asc))
-     edn.geo = edn.geo[order(edn.geo$NotificationDate, decreasing=TRUE),]
-     nrow(edn.geo)
-     
-     # index records without geocode
-     cat("there are ", format(nrow(edn.geo), big.mark=","), " records in edn.geo")
-     hasGeocode = edn.geo$Status %in% c("OK", "ZERO_RESULTS")
-     print(paste("There are ", 
-                 format(nrow(edn.geo[!hasGeocode,]), big.mark=","),
-                 "records without geocode"))
-
-     # table of geocode for records since 2006  
-     t = table(year(edn.geo[, "NotificationDate"]), 
-           edn.geo[, "Status"], 
-           useNA = 'always')
-     t = addmargins(t,c(1,2))
-     print(t)
-     
-     ednGeocode = function(n=10, data = edn.geo, header="http://"){
+#### EDN Geocode function ====
+      setwd("geo/")
+     ednGeocode = function(n=10, header="http://"){
           source('gGeoCode.R')
           start=Sys.time()
-          # sort records without geocode
+          
+          directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
+          load(paste(directory, "edn.geo.rda", sep=""))
+          
+          # Filter and sort records without geocode
           recordsToGeocode = !(edn.geo$Status %in% c("OK", "ZERO_RESULTS"))
-          cat("At start, there are ", 
-              format(nrow(data[recordsToGeocode,]), big.mark=","), 
-              "records without geocode\n")
+          
+          cat("there are ", format(nrow(edn.geo), big.mark=","), " records in edn.geo.  ")
+          hasGeocode = edn.geo$Status %in% c("OK", "ZERO_RESULTS")
+          cat("Of those, ", 
+                      format(nrow(edn.geo[!hasGeocode,]), big.mark=","),
+                      "records are without geocode. \n")
           
           # limit data to number of records to geocode
-          update.data = data[recordsToGeocode,]
+          # order by oldest record in this year, 
+          # then previous years (e.g. by Year (desc), Notification (asc))
+          update.data = edn.geo[recordsToGeocode,]
           update.data = update.data[order(update.data$NotificationDate, 
                                           decreasing=TRUE),]
           update.data = update.data[1:n,]
@@ -210,7 +182,7 @@ dedupe.edn.geo = function(){
                # 'Test address1 for leading # sign, as in: 
                # #3b 3730 W. LELAND, chicago, il, 60625
                # 'If found, remove # and number.
-               # address = address
+               address = gsub("[[:punct:]]", " ", address)
 
                geocode = gGeoCode(address, http=header)
                
@@ -238,25 +210,62 @@ dedupe.edn.geo = function(){
           return(update.data)
      }
      
-     # geocoding....
-     new.geo = ednGeocode(n=500, header="http://")
-     new.geo = new.geo[new.geo$Status %in% c("OK", "ZERO_RESULTS"),]
-     nrow(new.geo)
-     
-     # update edn.geo with new geo
-     rownames(edn.geo) = edn.geo$AddressID
-     rownames(new.geo) = new.geo$AddressID
-     edn.geo[rownames(new.geo), ] = new.geo
+#### geocoding....
+      # delay, code, repeat ... 
+        maxit = 3
+        for (i in 1:maxit){
+          # alternate http and https when i is odd or even
+           http = ifelse( i %% 2 == 0, "https://","http://")
+           
+           new.geo = ednGeocode(n=100, header=http)
+           
+           new.geo = new.geo[new.geo$Status %in% c("OK", "ZERO_RESULTS"),]
+           nrow(new.geo)
+           
+           # update edn.geo with new geo
+           rownames(edn.geo) = edn.geo$AddressID
+           rownames(new.geo) = new.geo$AddressID
+           edn.geo[rownames(new.geo), ] = new.geo
+      
+           ## save file
+           save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))     
+           
+           # pause (in seconds)
+           pause.edngeo = Sys.time()
+           pause = 1*60
+           
+           # If not the last iteration, pause. print summary table
+           if (!(i==maxit)){
+             
+             cat("Finished iteration ", i, ". The system will now pause at ", 
+                 format(pause.edngeo), 
+                 " for ", pause/60 , " minutes \n")
+             
+             # table of geocode for records since 2006  
+             t = table(year(edn.geo[, "NotificationDate"]), 
+                       edn.geo[, "Status"], 
+                       useNA = 'always')
+             t = addmargins(t,c(1,2))
+             print(t) 
+            
+             Sys.sleep(pause)
+             
+           } else { 
+             cat("there are ", format(nrow(edn.geo), big.mark=","), " records in edn.geo")
+             
+             # table of geocode for records since 2006  
+             t = table(year(edn.geo[, "NotificationDate"]), 
+                       edn.geo[, "Status"], 
+                       useNA = 'always')
+             t = addmargins(t,c(1,2))
+             print(t) 
+             hasGeocode = edn.geo$Status %in% c("OK", "ZERO_RESULTS")
+             print(paste("There are ", 
+                         format(nrow(edn.geo[!hasGeocode,]), big.mark=","),
+                         "records without geocode"))
+        }}
 
-     ## save file
-     save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))     
-     
-     
-     recordsToGeocode = which( !(edn.geo$Status %in% "OK") &
-                                    !(edn.geo$Status %in% "ZERO_RESULTS"))
-     cat("Now there are",format(length(recordsToGeocode), big.mark=","), 
-    "records without geocode\n")
-     
+ # ===== Summary ====    
      # number notifications by year
 
      t =  table(year(edn.geo$NotificationDate), 
@@ -274,11 +283,11 @@ dedupe.edn.geo = function(){
      print(t)
 
      
- #  ====  Add long names for country and state ====
-     
- 
+ #  ===== Add long names for country and state
+    ##### need to fix....this causes duplicate columns
+    setwd("geo/")
      # add country names
-     load("country.lat.long.RData") # country codes and names (edn has codes only)
+     load("country.lat.long.rda") # country codes and names (edn has codes only)
      edn.geo = merge(country.lat.long, edn.geo, 
                      by.x="FIPS", by.y="country.code",  all.y=TRUE)
      colnames(edn.geo)[colnames(edn.geo) %in% "FIPS"]<-"country.code"
@@ -289,66 +298,6 @@ dedupe.edn.geo = function(){
                      by.x="abb", by.y="state.abb", all.x = TRUE)
      colnames(edn.geo)[colnames(edn.geo) %in% "abb"]<-"state.abb"
      
-     save(edn.geo, file = paste(directory, "edn.geo.rda", sep="")) 
+#      save(edn.geo, file = paste(directory, "edn.geo.rda", sep="")) 
      
-
-
-#  ===== Get records from Access database.  Thereafter, use R to geocode. ====
-# library(RODBC)  
-#      edn.geocode = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/EDN geocode.accdb"
-#      edn.con = odbcConnectAccess2007(edn.geocode)
-#      qry = "SELECT * FROM Table1" 
-#      edn.geo = sqlQuery( edn.con, qry)
-#      odbcCloseAll()
-#      
-#      str(edn.geo)
-# 
-# # limit to records with reasonable ArrivalDate
-#      geo = edn.geo[year(edn.geo$ArrivalDate)>2005,]
-# 
-#      table(year(geo$ArrivalDate), geo$Status, useNA='always')
-#      accuracy = table(geo$Accuracy)
-#      per.acc = 100 * prop.table(accuracy)
-#      accuracy = cbind( accuracy, as.numeric(format(per.acc, digits=2 )))
-#      colnames(accuracy)[2] = "%" ; accuracy
-# 
-#      table(edn.geo$AlienType, useNA='always')
-#      
-# # update visa type from EDN
-#      edn.con = odbcConnect("edn")
-#      qry.visa = "SELECT AlienID, 
-#                CASE WHEN immigranttype = 'I' THEN 'Immigrant' 
-#                WHEN immigranttype = 'K1' THEN 'K1-FIANCEE' 
-#                WHEN immigranttype = 'P-N' THEN 'Parolee no benefits' 
-#                WHEN refugeetype = 'A' THEN 'Asylee' 
-#                WHEN refugeetype = 'P-R' THEN 'Parolee with refugee benefits' 
-#                WHEN refugeetype = 'R' THEN 'Refugee' 
-#                WHEN refugeetype = 'SIV' THEN 'Special Immigrant Visa' 
-#                ELSE 'Unknown' END as VisaType
-#                FROM Alien" 
-#      edn.visa = sqlQuery( edn.con, qry.visa)
-#      odbcCloseAll()
-#      str(edn.visa)
-# 
-#      edn.geo = merge(edn.geo, edn.visa, all.x=TRUE)
-#
-# rename cols
-# colnames(edn.geo)[colnames(edn.geo) %in% "Country"]<-"country.code"
-# colnames(edn.geo)[colnames(edn.geo) %in% "state"]<-"state.abb"
-# 
-# # add country names
-# load("country.lat.long.RData") # country codes and names (edn has codes only)
-# edn.geo = merge(country.lat.long, edn.geo, 
-#                 by.x="FIPS", by.y="country.code",  all.y=TRUE)
-# colnames(edn.geo)[colnames(edn.geo) %in% "FIPS"]<-"country.code"
-# 
-# # add state names
-# load("state.codes.rda")
-# edn.geo = merge(state.codes, edn.geo ,
-#                 by.x="abb", by.y="state.abb", all.x = TRUE)
-# colnames(edn.geo)[colnames(edn.geo) %in% "abb"]<-"state.abb"
-# 
-# # Save edn.geo to secure directory
-#      directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
-#      save(edn.geo, file = paste(directory, "edn.geo.rda", sep=""))
 
