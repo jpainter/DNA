@@ -31,8 +31,7 @@ plot.routes = function( data = gcircles.rc,
      
      # Dates
      library(lubridate)
-     my
-     
+ 
      
      title = paste("EDN notification of arrivals from ", paste(country, collapse=", ") , ",\n",  
                      date1 , " - " , date2, 
@@ -97,10 +96,10 @@ plot.routes = function( data = gcircles.rc,
           ggtitle(title)
  
      route.data$color.var = route.data[, color.var]
-     routes = geom_line(aes(long.recenter, lat, group=group.regroup,  
-                            colour = color.var, #AlienType,
-                            size = count,
-                            alpha = count
+     routes = geom_line(aes(long.recenter, lat, group=group.regroup  
+#                             colour = color.var, #AlienType,
+#                             size = count,
+#                             alpha = count
                             ), 
                         linetype='solid',
                         lineend ="round" ,
