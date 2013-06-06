@@ -217,7 +217,7 @@ dedupe.edn.geo = function(){
      
 #### geocoding....
       # delay, code, repeat ... 
-        maxit = 24
+        maxit = 12
         directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
         load(paste(directory, "edn.geo.rda", sep=""))
         for (i in 1:maxit){

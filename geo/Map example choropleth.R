@@ -1,8 +1,17 @@
+require(maps)
+require(mapdata)
+
 map()  # low resolution map of the world
 map('usa')	# national boundaries
 map('county', 'new jersey')	# county map of New Jersey
+map('county')
 map('state', region = c('new york', 'new jersey', 'penn'))	# map of three states
 map("state", ".*dakota", myborder = 0)	# map of the dakotas
+
+# Alaska and Hawaii
+map("worldHires", "Hawaii", add=TRUE)
+map("worldHires", "USA:Alaska", add=TRUE)
+
 map.axes()				# show the effect of myborder = 0
 if(require(mapproj))
   map('state', proj = 'bonne', param = 45)	# Bonne equal-area projection of states
@@ -14,6 +23,7 @@ map('county', 'washington,san', names = TRUE, plot = FALSE)
 # (figure 5 in the reference)
 map("state", interior = FALSE)
 map("state", boundary = FALSE, lty = 2, add = TRUE)
+map('county', add = TRUE)
 
 # plot the ozone data on a base map
 # (figure 4 in the reference)
@@ -21,6 +31,9 @@ data(ozone)
 map("state", xlim = range(ozone$x), ylim = range(ozone$y))
 text(ozone$x, ozone$y, ozone$median)
 box()
+
+
+# US county choropleth with unemployment data
 if(require(mapproj)) {	# mapproj is used for  projection="polyconic"
   # color US county map by 2009 unemployment rate
   # match counties to map using FIPS county codes
@@ -56,3 +69,6 @@ if(require(mapproj)) {	# mapproj is used for  projection="polyconic"
   # http://blog.revolutionanalytics.com/2009/11/choropleth-challenge-result.html
   # To see the faint county boundaries, use RGui menu:  File/SaveAs/PDF
 }
+
+
+

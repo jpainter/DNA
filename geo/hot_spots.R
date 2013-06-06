@@ -46,8 +46,8 @@
                          color.var = "country"
                            ) {
 
-# if only one country chosen, then color spots by visa
-     if (is.na(country)==FALSE & !(country[1] %in% c("all", "All"))){
+# if only no country chosen, then color spots by visa
+     if (sum(is.na(country)) > 0){
           color.var = "visa"
      }
 # data filters
@@ -145,7 +145,7 @@
      if (!is.na(top)){
           cluster.type = paste("Top ", top, " notification clusters", sep  = "")
      } else {
-          cluster.type = paste("Arrivals of at least ", min, " ", sep  = "")
+          cluster.type = paste("Areas with at least", min, "arrivals")
      }
      title = paste( cluster.type, 
                     "\n",

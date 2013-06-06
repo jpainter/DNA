@@ -1,0 +1,918 @@
+\documentclass{article}  
+
+% latex packages and defaults
+\pagestyle {headings} % running title
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\lhead{Expanded Refugee Vaccine Program}
+\rhead{\thepage} % page number upper right corner
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace} %for Hmisc::describe
+\usepackage{relsize}  %for Hmisc::describe
+\usepackage[section]{placeins}  %% keeps output from floating into adjoining sections
+\usepackage[bottom]{footmisc} % keeps footnotes at the bottom of the page
+\usepackage{fixltx2e}
+\usepackage{booktabs}  % for table formatting
+\usepackage{url} % to insert url
+
+% defaults for margins
+\renewcommand{\topfraction}{.85}
+\renewcommand{\bottomfraction}{.7}
+\renewcommand{\textfraction}{.15}
+\renewcommand{\floatpagefraction}{1} % original = 0.66
+\renewcommand{\dbltopfraction}{.66}
+\renewcommand{\dblfloatpagefraction}{.66}
+\setcounter{topnumber}{9}
+\setcounter{bottomnumber}{9}
+\setcounter{totalnumber}{20}
+\setcounter{dbltopnumber}{9}
+
+<<'countries.and.dates', echo=FALSE>>=
+  # load edn.geo from secure directory
+     directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
+     load(paste(directory, "edn.geo.rda", sep=""))
+      most.recent = format(max(edn.geo$ArrivalDate), "%B %d %Y")
+  
+     .countries = c("Kenya", "Somalia", "Ethiopia")
+     .date1 = "January 1 2013" 
+     .date2 = most.recent 
+
+     source('geo/hot_spots.R')  # load hot.spot.map function
+
+###### NOTE  ###########
+#  in addition to adjusting dates above, which are used to pull in the route data,
+#  also need to update the spreadsheet DNA_vx_refugee_program2.xlsx for the vaccine
+#  coverage data.  Update the 'population' and the 'vaccination' tabs, then save file.
+@
+
+
+<<"title", echo=FALSE, message=FALSE, cache=FALSE, results='hide'>>=
+.title= 'Immigration Patterns Surrounding Polio in Kenya and Somalia' 
+.subtitle = "Preliminary Report for Time Period"
+.author = 'Epidemiology Team'
+.authornote = 'Epidemiology Team: John Painter (Lead), Steve Benoit, Kendra Cuffe, Sasi Jonnalagadda, Yecai Liu, Rossanne Philen, Zanju Wang, Meghan Weems; EDN developers: Yoni Haber (lead), Wei-Lun Juang, Charles Miller, Daniel Wenger; and EDN data entry center: Nekiea Gray (Lead)'
+@
+
+
+<<"knitr.setup", echo=FALSE , message=FALSE, cache=FALSE>>=
+opts_chunk$set( echo=FALSE,  
+                cache=FALSE ,
+                results='asis',
+                fig.align='center', fig.show='hold', fig.width=6, fig.height=4,
+                fig.path='images/', fig.align='center',
+                message=FALSE, 
+                comment="", tidy=TRUE, keep.source=FALSE )
+
+options(replace.assign=TRUE, 
+        width=60  # line width = 60 prevents overflow
+        )
+if (!exists('.title')) .title = 'Immigrant, Refugee, and Migrant Health Branch'
+if (!exists('.title')) .subtitle = ''
+if (!exists('.author')) .author = Sys.info()['user']
+if (!exists('.authornote')) .authornote = 'Epidemiology Team: John Painter (Lead), Steve Benoit, Kendra Cuffe, Sasi Jonnalagadda, Yecai Liu, Rossanne Philen, Zanju Wang, Meghan Weems; EDN developers: Yoni Haber (lead), Wei-Lun Juang, Charles Miller, Daniel Wenger; and EDN data entry center: Nekiea Gray (Lead)'
+@
+
+\begin{document}
+\title{\Sexpr{.title} \\ \Sexpr{.subtitle}  \\ \Sexpr{paste(.date1, " to ", .date2)}}
+\author{\Sexpr{.author} \footnote{\Sexpr{.authornote}} }
+\maketitle
+\tableofcontents  % inserts 'Table of contents' 
+
+\section{Background}
+
+In May, 2013, a 4-month old baby, female, living in the Dadaab refugee camp, Kenya, was diagnosed with polio.  Two contacts in Dadaab have also tested positive for WPV1. The majority of refugees in Dadaab are Somalis.  Because migration between the refugee camps and Somalia is thought to be frequent, there is potential for spread to a larger area. 
+
+Somali refugees are primarily located in Kenya and Ethiopia.  In Kenya, approximately 600,000 refugees live in Nairobi, Kakuma (near South Sudan), and the Dadaab area camps near southern Somalia.\footnote{UNHCR, Health Information System, his.unhcr.org}.  In Ethiopia, approximately 200,000 refugees live in over a dozen refugee camps.  Of those, four camps are close to northern Somalia and 2 are close to southern Somali. 
+
+Figure 1 depicts the largest migrations from Somalia to refugee camps in Kenya and Ethiopia. \footnote{Source: UNHCR, his.unhcr.org, see 'data explorer/infographics'}
+\begin{figure}[h!] 
+\includegraphics[width=\textwidth]{SomaliaDisplacement.pdf} 
+\caption{Refugee migration from Somali} 
+\end{figure}
+
+Of those refugees resettled to the United States in 2013, there are approximately twice as many from Ethiopia as Kenya.  Approximately half of the refugees arriving from Kenya and Ethiopia are Somali.  The majority of Somali refugees from Kenya were living in Kakuma and the majority from Ethiopia were living around Dire Dawa, near northern Somalia.
+
+DGMQ reports the arrival date and medical history data of ALL refugees and only those immigrants with medical conditions of public health importance (e.g. tuberculosis) to state and local health officials through the Electronic Disease Notification system (EDN).  Because EDN on notifies states of immigrants with a notifiable condition, data on immigrants is not complete.  The Department of Homeland Security records the arrival into the United States of all migrants.  Currently, the most recently available arrival data from DHS is through fiscal year 2011.  
+
+This report is intended to provide information on the polio vaccine coverage of immigrants and refugees arriving from the Somali region. Data on MMR vaccine coverage is provided for comparison.   
+
+Data are preliminary.  Data on arrivals by camp and nationality come from US Department of State WRAPS database and we are not able to confirm the accuracy of that data.  Because of small sample size concerns, data on immigrant arrivals from DHS is provided to CDC with rounding errors.  
+
+% \section{Refugees}
+% The map depicts EDN notifications from country of asylum to the United States. The line width is proportion to the number of arrivals and the thinest lines represent a minimum of 25 arrivals.   (For simplification of the map, lines are shown only for country-state pairs with at least 25 arrivals).
+
+<<incoming.data, eval=TRUE, warning=FALSE>>=
+  # load edn.geo from secure directory
+#      directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
+#      load(paste(directory, "edn.geo.rda", sep=""))
+
+# Set date range:
+     library(lubridate)
+     date1 = mdy(.date1, quiet=TRUE)  
+     date2 = mdy(.date2, quiet=TRUE)
+ 
+# filter by date 
+     edn.geo = edn.geo[edn.geo$ArrivalDate >= date1 & 
+                           edn.geo$ArrivalDate <= date2, ]
+
+# Adresses are the final destination.  Will need to add starting points
+
+# add country names
+     load("geo/country.lat.long.rda") # country codes and names (edn has codes only)
+#      edn.geo = merge(country.lat.long, edn.geo, 
+#                  by.x="FIPS", by.y="country.code",  all.y=TRUE)
+#      colnames(edn.geo)[colnames(edn.geo) %in% "FIPS"]<-"country.code"
+# 
+#      # add state names
+     load("geo/state.codes.rda")
+#      edn.geo = merge(state.codes, edn.geo ,
+#            by.x="abb", by.y="state.abb", all.x = TRUE)
+#      colnames(edn.geo)[colnames(edn.geo) %in% "abb"]<-"state.abb"
+
+
+# filter by country
+     edn.polio = edn.geo[edn.geo$country.name %in% .countries, ]
+   
+# change set State and Country colnames to be full length (they are abbrev. in original edn data)
+    edn.polio$State = as.character(edn.polio$state) #remove factor
+    edn.polio$Country = as.character(edn.polio$country.name) #remove factor
+
+# save
+  save(edn.polio,  file = paste(directory, "edn.polio.rda", sep=""))
+@
+
+<<gcircles, eval=TRUE, warning=FALSE, eval=FALSE>>=
+
+  library(plyr)
+  incoming.polio = ddply(.data = edn.polio, .(country.name, state, VisaType,
+                                              CountryLong,CountryLat,
+                                              stateLong, stateLat ), 
+                         summarize, 
+                          count = length(State)
+                           )
+
+# save
+     save(incoming.polio, file="incoming.polio.rda")
+  
+# calculate routes ----
+     library(geosphere)
+      has.state = !is.na(incoming.polio$state)
+     rts <- gcIntermediate( incoming.polio[ has.state ,
+                                            c('CountryLong', 'CountryLat')], 
+                         incoming.polio[ has.state,
+                                         c('stateLong', 'stateLat')], 
+                         30, breakAtDateLine=FALSE, addStartEnd=TRUE, sp=TRUE) 
+#- Dateline Break FALSE, 
+# otherwise we get a bump in the shifted ggplots
+
+     require(ggplot2)
+     source ("fortify-spatial.r")
+     rts.ff <- fortify.SpatialLinesDataFrame(rts) # convert into something ggplot can plot
+
+# join attributes, we keep them all, just in case
+     incoming.polio$id <-as.character(c(1:nrow(incoming.polio))) # that rts.ff$id is a char
+     gcircles.polio <- merge(rts.ff, incoming.polio, all.x=T, by="id") # ggplot
+
+# remove unneeded objects
+#      rm(state.codes, country.lat.long, edn.polio)
+     
+     save(gcircles.polio, file="gcircles.polio.RData")
+
+### Functions to regroup split lines and polygons when recentering 
+# takes dataframe, column with long and unique group variable, returns df with added column named group.regroup
+     RegroupElements <- function(df, longcol, idcol){  
+     browser
+       g <- rep(1, length(df[,longcol]))
+       if (diff(range(df[,longcol])) > 300) {          
+         # check if longitude within group differs more than 300 deg, ie if element was split
+          # we use the mean to help us separate the extreme values
+         d <- df[,longcol] > mean(range(df[,longcol]))
+         # some marker for parts that stay in place 
+         # (we cheat here a little, as we do not take into account concave polygons)
+         g[!d] <- 1     
+         g[d] <- 2      # parts that are moved
+       }
+       # attach to id to create unique group variable for the dataset
+       g <-  paste(df[, idcol], g, sep=".") 
+       df$group.regroup <- g
+       df
+     }
+
+### Function to close regrouped polygons
+# takes dataframe, checks if 1st and last longitude value are the same, if not, inserts first as last and reassigns order variable
+     ClosePolygons <- function(df, longcol, ordercol){
+       if (df[1,longcol] != df[nrow(df),longcol]) {
+    tmp <- df[1,]
+    df <- rbind(df,tmp)
+  }
+  o <- c(1: nrow(df))  # rassign the order variable
+  df[,ordercol] <- o
+  df
+}
+
+# Recenter data ----
+  load("gcircles.polio.RData")
+  center <- 275 # positive values only - US centered view is 260
+
+# shift coordinates to recenter great circles
+  gcircles.polio$long.recenter <-  ifelse(gcircles.polio$long  < center - 180 , 
+                                    gcircles.polio$long + 360, gcircles.polio$long) 
+
+# now regroup lines
+  library(plyr)
+
+# reallly reallly long function.....(used to be.  Now, that lines are grouped it is fast)
+  gcircles.polio.rc <- ddply(gcircles.polio, .(id), RegroupElements, "long.recenter", "id")
+
+  save(gcircles.polio.rc, file="gcircles.polio.rc.RData")
+
+@
+
+<<"incoming-map", fig.width= 7, fig.height=7 , dpi=300, fig.cap='Refugee resettlement for countries participating in expanded vaccination program (each line represents a minimum of 25 persons)', warning=FALSE, eval=FALSE>>=
+
+ load("gcircles.polio.rc.RData")
+
+# list of visa types
+     visa.types = as.character(unique(gcircles.polio.rc[!is.na(gcircles.polio.rc$VisaType),"VisaType"]))
+
+# plot
+     source('geo/plot.routes.r')
+     plot.routes(data = gcircles.polio.rc,
+                 country = .countries, 
+                 date1 = .date1,
+                 date2 = .date2,
+                 visa = visa.types,
+                 color.var = "VisaType",
+                 min=5)
+
+@
+
+\section{Visa types}
+For arrivals from \Sexpr{.countries}, the following visa types were reported with EDN notifications during \Sexpr{.date1} to \Sexpr{.date2}.
+
+
+<<visa.types.by.country>>=
+     library(xtable)
+     t = with(edn.polio, 
+              table(VisaType, Country))
+    # margin totals
+    t = addmargins(t)
+
+    # margin percent
+
+    pt.row = 100* round(prop.table(as.matrix(t[nrow(t), 1:(ncol(t)-1)]), 2),3)
+    pt.row = paste(pt.row, "%", sep='')
+    pt.row = cbind(t(pt.row), "100%")
+
+    pt.col = 100* round(prop.table(as.matrix(t[1:(nrow(t)-1),ncol(t)]), 2),3)
+    pt.col = paste(pt.col, "%", sep='')
+    pt.col = c(pt.col, "100%", "")
+
+    # bind percents and format
+    visa.table = rbind( format(t, big.mark=","), format(pt.row, digits=2 ))
+    visa.table = cbind( visa.table, format(pt.col, digits=2 ))
+    
+  
+    # headers
+     colnames(visa.table) = c(.countries[order(.countries)], "All Countries", "%")
+     rownames(visa.table)[nrow(visa.table)-1] = "All Visas"
+
+     xt = xtable(visa.table, caption="Visa types by country", floating=F, 
+                 align=c("l",rep("r", ncol(visa.table)))
+     )
+     print(xt)
+     
+@
+
+\subsection{Refugee Nationalities}
+
+Because there have been multiple conflicts in the Horn of Africa, there are refugees from several countries living in Ethiopia and Kenya.  Of those arriving in the United States, approximately half are from Somali.
+
+<<'nationalities'>>=
+library("XLConnect")
+
+wb <- loadWorkbook("Vaccinations/DNA_nationality.xlsx")
+# wb <- loadWorkbook("//cdc/project/ccid_ncpdcid_dgmq/IRMH/DNA/DNAdevelopment_vaccinations.xlsx")
+nat <- readWorksheet(wb, sheet = "nat", 
+                    startRow=4, startCol=1, 
+                    header = TRUE)
+
+# str(nat)
+nat = nat[nat$Year == "Calendar 2013", ]
+t = xtabs(Total ~ Nationality + Country.Name, data= nat)
+caption = paste("Nationalities of refugee arrivals from ", 
+                paste(.countries, collapse =", ", sep=""),
+                sep='')
+xtable(t, display=c("s","d","d","d"), caption=caption)
+
+@
+
+\subsection{Refugee Camps by Nationality}
+Among Somali refugees living in Kenya, most that have come to the United States this year were living in Kakuma.
+
+<<'camps'>>=
+library("XLConnect")
+
+wb <- loadWorkbook("Vaccinations/DNA_nationality.xlsx")
+# wb <- loadWorkbook("//cdc/project/ccid_ncpdcid_dgmq/IRMH/DNA/DNAdevelopment_vaccinations.xlsx")
+nat <- readWorksheet(wb, sheet = "nat", 
+                    startRow=4, startCol=1, 
+                    header = TRUE)
+
+# str(nat)
+nat = nat[nat$Year == "Calendar 2013", ]
+
+.countries = .countries[order(.countries)]
+for (i in 1:length(.countries)){
+  country = nat$Country.Name %in% toupper(.countries[i])
+  t = xtabs(Total ~  Nationality + Location, 
+            data= nat[country,])
+  caption = paste("Location by Nationalities for refugee arrivals from ", 
+                  paste(.countries[i], collapse =", ", sep=""),
+                  sep='')
+  x = xtable(t, display=c("s", rep("d", ncol(t))), caption=caption)
+  print(x, include.rownames=TRUE)
+}
+@
+
+
+Anong those living in Ethiopia, the location of new arrivals has changed over recent years from camp-based (mostly Kebribaya camp) to primarily urban (e.g. Dire Dawa).  however, 'Dire Dawa' may reflect the site of the IOM medical rather than the living site.  Dire Dawa is 2-hour drive from Kebribeya.  The abrupt shift in the documented location from Kebribeya to Dire Dawa suggests a change in data entry.  
+
+<<'somali.locations.by.year'>>=
+  wb <- loadWorkbook("Vaccinations/DNA_nationality.xlsx")
+  # wb <- loadWorkbook("//cdc/project/ccid_ncpdcid_dgmq/IRMH/DNA/DNAdevelopment_vaccinations.xlsx")
+  nat <- readWorksheet(wb, sheet = "nat", 
+                    startRow=4, startCol=1, 
+                    header = TRUE) 
+  library(stringr)
+  nat$year = as.numeric(word(nat$Year, 2))
+
+  somalis.ethiopia = nat$Nationality %in% "Somalia" & nat$Country.Name %in% "ETHIOPIA" & nat$year > 2008
+  t = xtabs(Total ~ Location + year, data = nat[somalis.ethiopia, ])
+  t = addmargins(t)
+  colnames(t)[ncol(t)] = "All years"
+  rownames(t)[nrow(t)] = "All locations"
+
+  caption = paste("Locations by year for Somali refugees in Ethiopia (edn variable 'present country')", 
+                  paste(.countries[i], collapse =", ", sep=""),
+                  sep='')
+  x = xtable(t, display=c("s", rep("d", ncol(t))), caption=caption)
+  print(x, include.rownames=TRUE)
+@
+
+
+\section{Destination states}
+The following table list the states with any EDN notification for persons from \Sexpr{.countries}.  
+
+<<"destination.states">>=
+
+destination.states = function( data = incoming,
+                        country = .countries, 
+                        date1 = .date1 , 
+                        date2 = .date2 ,
+                        visa = c('Immigrant', 
+                                 'Refugee', 
+                                 'Asylee', 
+                                 'Special Immigrant Visa', 
+                                 'Parolee with refugee benefits', 
+                                 'Parolee no benefits'), 
+                         min = 1
+){  
+     
+     caption = paste("Destination states for ", 
+                     paste(visa, collapse=", "), 
+                     " from ",
+                     paste(country, collapse=", ") , 
+                     date1 , " - " , date2,  
+                     sep = "")
+
+
+     # route.select=which(gcircles.rc$AlienType %in% 'R' & gcircles.rc$count>1000)
+     if(country[1] %in% "all")   {COUNTRY =  rep(TRUE, nrow(data))} else 
+                              {COUNTRY =  data$country.name %in% country}
+     
+     # arrange coutnries alphabetically
+     country= country[order(country)]
+                    
+#      MIN = data$count > min 
+     
+     VISA = data$VisaType %in% visa
+     
+     route.select=which( COUNTRY & VISA )
+     
+     data.select = data[route.select,]
+     
+     library(xtable)
+     library(plyr)
+     states = ddply( .data= data.select, .(State), .fun = function(x){
+                        data.frame(
+                          Count = format(nrow(x), big.mark=',' ),
+                          count = nrow(x))
+                      }
+     )
+     # remove missing
+     states = states[!is.na(states$State),]
+     
+     # re- order and reset rownames (so that rownames match order)
+     states = states[rev(order(states$count)),]
+     rownames(states) <- seq(length=nrow(states))
+     
+     states.total = data.frame(State = "TOTAL", 
+                               Count = format(sum(states$count), 
+                                              big.mark=',', 
+                                              justify="right" )
+                               )
+     states = rbind(states[,1:2], states.total)
+#      rownames(states)[nrow(states)] = ""
+     
+     # use title case
+     titleCase <- function(x) {
+#           s <- strsplit(x, " ")
+          paste( toupper(substring(x, 1, 1)),
+                 substring(x, 2),
+                 sep="")
+     }
+     states$State = titleCase(states$State)
+     
+     # re-name columns
+     names(states) = c("State", "Arrivals")
+     
+     xt =  xtable( states , floating=F, caption = caption, 
+                   align=c("r","l","r"), scalebox=0.8)
+     
+     print(xt, include.rownames=TRUE)
+     
+     # end latex commands ... (optional)
+      cat("\\FloatBarrier", "\n")
+}
+
+load("incoming.polio.rda")
+destination.states(data = edn.polio, 
+             date1=.date1, date2=.date2,
+             min=1)
+@
+\FloatBarrier
+
+Areas with EDN notifications are highlighted in the following spot maps.  Each circle corresponds to an area approximately 7 miles x 7 miles. This map is limited to records with a geocoded address.  As of May 15, approximately 2/3 of records have a geocoded address. 
+
+<<'hot.spot.all', dpi = 300, fig.height=6  , fig.cap='Areas with newly arriving immigrants and refugees', warning=FALSE >>=
+
+      hot.spot.map(country = .countries, 
+             date1=.date1, 
+             date2=.date2, 
+             min=1, 
+             top=NA, 
+             edn.data=edn.polio, 
+             color.var = "visa")
+@
+\FloatBarrier
+
+\subsection{Immigrants}
+
+When looking at these numbers it is important to remember that EDN only reports those immigrant arrivals with a Class A or Class B medical condition.  I may be reasonable to assume, however, that the destination states and (later) the vaccination history are likely a representative sample of the complete immigrant population.  
+
+
+<<"states.immigrants", warning=FALSE>>=
+
+destination.states(data = edn.polio, 
+                   date1=.date1, 
+                   date2=.date2, 
+                   visa = "Immigrant",
+                   min=1)
+
+@
+
+ <<'hot.spot.immigrants', dpi = 300, fig.height=6 , fig.cap='Immigrant resettlement states', warning=FALSE >>=
+
+hot.spot.map(country = .countries, 
+             date1=.date1, 
+             date2=.date2, 
+             min=1, 
+             top=NA, 
+             visa="Immigrant", 
+             edn.data=edn.polio,
+             color.var = "country")
+@
+\FloatBarrier
+
+The most recent data on immigration available from DHS is for fiscal year 2011.
+
+<<'dhs'>>=
+library("XLConnect")
+
+wb <- loadWorkbook("Vaccinations/DNA_nationality.xlsx")
+# wb <- loadWorkbook("//cdc/project/ccid_ncpdcid_dgmq/IRMH/DNA/DNAdevelopment_vaccinations.xlsx")
+dhs <- readWorksheet(wb, sheet = "dhs", 
+                    startRow=2, startCol=1, 
+                    header = TRUE)
+dhs$Age = dhs$Age.Group4.DHS.Data
+dhs$Country = dhs$Country.Name
+
+# str(nat)
+dhs = dhs[dhs$Fiscal.Year == "Fiscal Calendar 2011", ]
+t = xtabs( round(Total) ~ Age + Country, data= dhs) 
+t = addmargins(t,1)
+rownames(t)[nrow(t)] = "Total"
+caption = paste("DHS immigrant arrivals from ", 
+                paste(.countries, collapse =", ", sep=""),
+                ", by age group",
+                sep='')
+xtable(t, display=c("s","d","d","d"), caption=caption)
+
+@
+
+\subsection{Refugees} 
+
+<<"states.refugees">>=
+
+destination.states(data = edn.polio, 
+                   date1=.date1, 
+                   date2=.date2, 
+                   visa = "Refugee",
+                   min=1)
+
+@
+\FloatBarrier
+
+ <<'hot.spot.refugees', dpi = 300, fig.height=6 , fig.cap='Refugee resettlement states', warning=FALSE >>=
+
+hot.spot.map(country = .countries, 
+             date1=.date1, 
+             date2=.date2, 
+             min=5, 
+             top=NA, 
+             visa="Refugee", 
+             edn.data=edn.polio, 
+             color.var = "country")
+
+@
+\FloatBarrier
+
+
+
+\section{Vaccine Coverage}
+
+<<"load vaccine data">>=
+library("XLConnect")
+wb <- loadWorkbook("Vaccinations/DNA_vx_2013.xlsx")
+# wb <- loadWorkbook("//cdc/project/ccid_ncpdcid_dgmq/IRMH/DNA/DNAdevelopment_vaccinations.xlsx")
+vac <- readWorksheet(wb, sheet = "vaccination", 
+                    startRow=5, startCol=1, 
+                    header = TRUE)
+
+pop <- readWorksheet(wb, sheet = "population", 
+                    startRow=5, startCol=1, 
+                    header = TRUE)
+# rename  column
+names(pop)[4] = "pop"
+names(vac)[6] = "numVx"
+     
+# Add population to vx
+vx = merge(vac, pop, all.y=TRUE)
+vx.pop = vx[0,]
+vx.pop = merge(vx.pop, pop, all.y=TRUE)
+vx = rbind(vx, vx.pop)
+
+vx$IOM = vx$Vx.At.After.Exam
+
+all.vaccines = unique(na.omit(vx$Vaccination.Name))
+
+# Rename MMR
+vx[vx$Vaccination.Name %in% "MMR (Measles-Mumps-Rubella)", "Vaccination.Name"] = "MMR"
+
+# rename polios
+vx[ grep("Polio",vx$Vaccination.Name) , "Vaccination.Name"] = "Polio"
+
+vaccines = c( "Polio", "MMR" )
+
+vaccines.other = c("Measles", "Rubella", "Varicella", 
+                   "Hepatitis A", "Influenza", "Human papillomavirus" )
+# vx= vx[which(vx$Vaccination.Name %in% vaccines),]
+     
+# if vaccine not given for an age group, insert a row with population into table
+# for ( vx.name in vaccines){
+# for (age in 0:99){
+#      if (nrow(vx[ vx$Vaccination.Name==vx.name &  vx$AgeYY==as.character(age), ])=0){
+#           v = data.frame(Vaccination.Name=vx.name, AgeYY=as.character(age) )
+#           rbind(vx, v)
+#      } 
+# }}
+@
+
+The list of all vaccinations reported to EDN includes:\\
+\Sexpr{all.vaccines}.  
+\\\\
+Here, we present vaccine coverage only for polio and mmr as documented on the immigration medical vaccine history.
+% , and then other vaccines(\Sexpr{vaccines.other}).
+
+<<'vaccine.coverage.table', warning=FALSE>>=
+vaccine.coverage.table = function (vx = vx, country="Cuba", visa="Refugee", vaccine.name) {
+          
+     t = vx[which(vx$Country.Name == toupper(country) & 
+                       vx$Vaccination.Name %in% c(vaccine.name, NA) &
+                       vx$Visa.Type %in% visa) 
+            , ]
+     
+     # if vaccine not given for an age, vaccine name is missing.  Add name to those row 
+     # so that totals include entire population
+      t$Vaccination.Name = ifelse( is.na(vaccine.name), "none", vaccine.name )
+     
+# data from dna indicates number of persons ('Total') who had number of doses ('Vx')
+# ex.  a person who received one (and only one) dose would be in total for Vx = 1;
+# ex.  a person who received two doses would be in total for Vx = 2, but not Vx =1;
+# ex.  So, total number of persons who received one dose = total Vx=1 + total Vx=2
+# and, total number of persons who received 3 doses = total (Vx=1 + Vx=2 + Vx=3), etc.
+     
+     library(plyr)
+     tabYY = ddply(.dat=t, .(Vaccination.Name, AgeYY), 
+                 .fun=function(x){
+                      data.frame(
+                    Arrivals = max(x$pop, na.rm=TRUE) , # deduplicates pop
+                    Onedose = sum(x$Total, na.rm=TRUE) ,
+                    Twodoses =  sum(x[x$numVx>1, "Total"], na.rm=TRUE) ,
+                    Threedoses = sum(x[x$numVx>2, "Total"], na.rm=TRUE) ,
+                    FourOrMore = sum(x[x$numVx>3, "Total"], na.rm=TRUE) ,
+                    Totaldoses = sum(x[x$numVx==1, "Total"], na.rm=TRUE) +
+                         sum(x[x$numVx==2, "Total"], na.rm=TRUE)*2 +
+                         sum(x[x$numVx==3, "Total"], na.rm=TRUE)*3 +
+                         sum(x[x$numVx==4, "Total"], na.rm=TRUE)*4 +
+                         sum(x[x$numVx==5, "Total"], na.rm=TRUE)*5 ,
+                    numIOM = sum( x$Total * as.numeric(x$IOM), na.rm=TRUE) 
+                 )
+               })
+     
+# set Vaccination.Name  for all row, even those with no vx data, so that arrival 
+#  data gets counted
+     u = unique(na.omit(t$Vaccination.Name))
+     
+# set vaccine-specific age ranges
+  if (length(u)==1 & u[1]=="MMR") {
+       tabYY$age = factor(cut(as.numeric(tabYY$AgeYY), 
+                              breaks=c(0, 1, 5, 18, 56, 99), 
+                              right = FALSE,
+                              ordered_result = TRUE))
+  } else {
+     if (length(u)==1 & u[1]=="Polio") {
+       tabYY$age = factor(cut(as.numeric(tabYY$AgeYY), 
+                              breaks=c(0, 1,5, 11,18,99), 
+                              right = FALSE,
+                              ordered_result = TRUE))
+     } else {
+     if (length(u)==1 & u[1]=="Hepatitis B") {
+       tabYY$age = factor(cut(as.numeric(tabYY$AgeYY), 
+                              breaks=c(0,1, 5, 18, 99), 
+                              right = FALSE,
+                              ordered_result = TRUE))
+     } else {
+     if (length(u)==1 & u[1]=="Hib") {
+       tabYY$age = factor(cut(as.numeric(tabYY$AgeYY), 
+                          breaks=c(0,1, 5, 18, 99), 
+                              right = FALSE,
+                              ordered_result = TRUE))
+     } else {
+     if (length(u)==1 & u[1]=="DTP/DTaP/DT") {
+       tabYY$age = factor(cut(as.numeric(tabYY$AgeYY), 
+                              breaks=c(0,1, 5, 7, 18, 99), 
+                              right = FALSE,
+                              ordered_result = TRUE))
+     } else {  
+      if (length(u)==1 & u[1]=="Pneumococcal") {
+       tabYY$age = factor(cut(as.numeric(tabYY$AgeYY), 
+                              breaks=c(0, 1, 5, 18, 99), 
+                              right = FALSE,
+                              ordered_result = TRUE))
+     } else {
+       tabYY$age =  factor(cut(as.numeric(tabYY$AgeYY), 
+                              breaks=c(0, 2, 5, 18, 99), 
+                              right = FALSE,
+                              ordered_result = TRUE))
+     }
+  }}}}}
+
+     age.sum = ddply(.dat=tabYY, .(Vaccination.Name, age), 
+                 .fun=function(x){data.frame(
+                    Arrivals = sum(x$Arrivals, na.rm=TRUE) ,
+                    Onedose = sum(x$Onedose, na.rm=TRUE) ,
+                    Twodoses =  sum(x$Twodoses, na.rm=TRUE) ,
+                    Threedoses = sum(x$Threedoses, na.rm=TRUE) ,
+                    FourOrMore = sum(x$Threedoses, na.rm=TRUE) ,
+     
+                    Pct1dose = 100 * sum(x$Onedose, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE), 
+                    
+                    Pct2doses = 100 * sum(x$Twodoses, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE),
+                    
+                    Pct3doses = 100 * sum(x$Threedoses, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE),
+                    
+                    Pct4plus = 100 * sum(x$FourOrMore, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE),
+                    
+                    PctIOM = 100 * sum( x$numIOM , na.rm=TRUE) / 
+                              sum( x$Totaldoses, na.rm=TRUE)
+                 )})
+     
+     tab = ddply(.dat=tabYY, .(Vaccination.Name, age), 
+                 .fun=function(x){data.frame(
+                    Arrivals = sum(x$Arrivals, na.rm=TRUE) ,
+                    Onedose = sum(x$Onedose, na.rm=TRUE) ,
+                    Twodoses =  sum(x$Twodoses, na.rm=TRUE) ,
+                    Threedoses = sum(x$Threedoses, na.rm=TRUE) ,
+                    FourOrMore = sum(x$FourOrMore, na.rm=TRUE) ,
+     
+                    Pct1dose = 100 * sum(x$Onedose, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE), 
+                    
+                    Pct2doses = 100 * sum(x$Twodoses, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE),
+                    
+                    Pct3doses = 100 * sum(x$Threedoses, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE),
+                    
+                    Pct4plus = 100 * sum(x$FourOrMore, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE),
+                    
+                    PctIOM = 100 * sum( x$numIOM , na.rm=TRUE) / 
+                              sum( x$Totaldoses, na.rm=TRUE)
+                 )})
+     
+     
+     tab.all = ddply(.dat=tabYY, .(Vaccination.Name), 
+                 .fun=function(x){data.frame(
+                    age = "All ages", 
+                   Arrivals = sum(x$Arrivals, na.rm=TRUE) ,
+                    Onedose = sum(x$Onedose, na.rm=TRUE) ,
+                    Twodoses =  sum(x$Twodoses, na.rm=TRUE) ,
+                    Threedoses = sum(x$Threedoses, na.rm=TRUE) ,
+                    FourOrMore = sum(x$FourOrMore, na.rm=TRUE) ,
+     
+                    Pct1dose = 100 * sum(x$Onedose, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE), 
+                    
+                    Pct2doses = 100 * sum(x$Twodoses, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE),
+                    
+                    Pct3doses = 100 * sum(x$Threedoses, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE),
+                    
+                    Pct4plus = 100 * sum(x$FourOrMore, na.rm=TRUE) / 
+                                        sum(x$Arrivals, na.rm=TRUE),
+                    
+                    PctIOM = 100 * sum( x$numIOM , na.rm=TRUE) / 
+                              sum( x$Totaldoses, na.rm=TRUE)
+                 )})
+     
+     tab = rbind(tab, tab.all)
+
+     
+       library(tables)
+       booktabs = booktabs()
+       
+       Mean <- function(x) base::mean(x, na.rm=TRUE)
+       Sum <- function(x) base::sum(x, na.rm=TRUE)
+      
+     # custom percent format
+       percent.fmt <- function(x, digits, ...) {
+          s <- format(x, digits=digits, 
+                      scientific=FALSE,
+                      zero.print = '.'
+                      )
+#           s <- sprintf("$(%s)$", s)
+          s <- sprintf("$%s$", s)
+#           s <- latexNumeric(s)
+          s
+          }
+     
+       tab = tabular ( 
+            ( 
+                 RowFactor(Vaccination.Name, name = "Vaccine", spacing=1) *
+                      ( Factor(age, name="Age(years)*")  )  ) ~ 
+                 
+                 Heading("Arrivals")  * Arrivals * Heading() * Sum *
+                 Format(digits=1, big.mark=",", scientific=FALSE)
+            +
+                 
+                 Heading("Number of doses") *
+                           ( 
+                              Heading("1") * Onedose +
+                              Heading("2") * Twodoses +
+                              Heading("3") * Threedoses +
+                              Heading("4+") * FourOrMore 
+                           ) * Heading() * Sum * 
+                 Format(digits=1, big.mark=",", scientific=FALSE)
+            +
+                 
+                 Heading("Percent coverage") * 
+                 ( 
+                    Heading("1") * Pct1dose * Heading() * Sum  +
+                    Heading("2") * Pct2doses * Heading() * Sum +
+                    Heading("3") * Pct3doses * Heading() * Sum +
+                    Heading("4+") * Pct4plus * Heading() * Sum +
+                    Heading("Panel**") * PctIOM * Heading() * Sum
+                    ) * 
+#                  Format(percent.fmt(digits=1))
+                 Format(digits=1, nsmall=0, big.mark=",", 
+                               scientific=FALSE, zero.print = '.')      
+     
+            ,  data = tab
+       )
+       
+     # print table
+     require(Hmisc)
+     
+     cat("\\scalebox{0.7}{", "\n")
+       latex(tab,    
+#              ctable = TRUE,
+              booktabs = TRUE,
+#              options=list( col.just = c(rep("m{0.6in}", 12)) ),
+             col.just = c(rep("m{0.6in}", 12))
+#              , 
+#              size="small"
+             )
+     
+          # spacing after table
+     cat("}","\\\\", "\n") 
+     cat('\\vspace{3 mm}')
+     
+     }
+
+# latex preample
+vaccine.table.preamble = function(){
+     country = paste(country, collapse=", ")
+     cat("\\begin{table}[ht]\n" , 
+         "\\begin{center}\n" ,
+         "\\caption{Vaccination coverage, " ,
+         country ,
+         " , " ,
+         .date1 ,
+         " - ",
+         .date2 ,
+         ".\n}" ,
+         sep = "")
+}
+         
+# latex postscript
+vaccine.table.postscript = function(){
+     cat("\\end{center}\n", 
+         "\\small{$*$Square bracket,'[' or ']', includes the year; 
+         open parentheses, '(' or ')', does not include the year.}\n" , 
+         "\\\\",
+         "\\small{$**$Panel: The percentage of the documented vaccinations that were given by the panel physician.}\n" , 
+         "\\end{table}\n",  
+         "\\FloatBarrier\n" ,
+         sep = "")
+}
+@
+
+\subsection{Immigrants}
+
+<<'Kenya-table.immigrants', warning=FALSE>>=
+country = .countries
+vaccine.table.preamble()
+for (vaccine in vaccines ){
+     vaccine.coverage.table(vx = vx, 
+                            country = country, 
+                            vaccine.name = vaccine, 
+                            visa="Immigrant")
+}
+vaccine.table.postscript()
+@
+
+\subsection{Refugees}
+
+During the medical screening for refugee resettlement, IOM currently provides polio and MMR in Kenya but only MMR in Ethiopia.
+
+In addition to vaccines provided by IOM, UNHCR documents vaccination campaigns within the camps.  For the most recent data availabe, May 2012,\footnote{\url{http://his.unhcr.org/filestore/reports-his/2012/KE/KY_IndReport_201205.pdf}}\footnote{\url{http://his.unhcr.org/filestore/reports-his/2012/ET/ET_IndReport_201205.pdf}} UNHCR reports vaccine coverage rates for children under 5 years of age.
+
+\begin{itemize}
+  \item{In Kenya, the rates were 78\% for polio and 102\% for measles.} 
+  \item{In Ethiopia, the rates were 61\% for polio and 63\% for measles.}
+\end{itemize}
+
+<<'table.refugees', warning=FALSE>>=
+country = "Kenya"
+vaccine.table.preamble()
+for (vaccine in vaccines ){
+     vaccine.coverage.table(vx = vx, 
+                            country = country, 
+                            vaccine.name = vaccine, 
+                            visa="Refugee")
+}
+vaccine.table.postscript()
+
+country = "Ethiopia"
+vaccine.table.preamble()
+for (vaccine in vaccines ){
+     vaccine.coverage.table(vx = vx, 
+                            country = country, 
+                            vaccine.name = vaccine, 
+                            visa="Refugee")
+}
+vaccine.table.postscript()
+@
+
+
+\end{document}
+
+
