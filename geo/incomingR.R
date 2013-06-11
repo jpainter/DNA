@@ -217,14 +217,15 @@ dedupe.edn.geo = function(){
      
 #### geocoding....
       # delay, code, repeat ... 
-        maxit = 12
+
+RequestGeoCode = function(maxit = 240, records=200, delay=1*60*60){
         directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
         load(paste(directory, "edn.geo.rda", sep=""))
         for (i in 1:maxit){
           # alternate http and https when i is odd or even
            http = ifelse( i %% 2 == 0, "https://","http://")
            
-           new.geo = ednGeocode(n=200, header=http)
+           new.geo = ednGeocode(n=records, header=http)
            
            new.geo = new.geo[new.geo$Status %in% c("OK", "ZERO_RESULTS"),]
            nrow(new.geo)
@@ -239,7 +240,7 @@ dedupe.edn.geo = function(){
            
            # pause (in seconds)
            pause.edngeo = Sys.time()
-           pause = 1*60*60
+           pause = delay
            
            # If not the last iteration, pause. print summary table
            if (!(i==maxit)){
@@ -272,6 +273,7 @@ dedupe.edn.geo = function(){
                          format(nrow(edn.geo[!hasGeocode,]), big.mark=","),
                          "records without geocode"))
         }}
+}
 
 
 #### fix records with missing state and country codes =====

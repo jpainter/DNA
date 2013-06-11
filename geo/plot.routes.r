@@ -21,7 +21,7 @@ plot.routes = function( data = gcircles.rc,
 
      load("worldmap.cp.RData")
      load("states.cp.RData")
-     
+          
      # Country
      if(country[1] %in% "all")   {COUNTRY =  rep(TRUE, nrow(data))} else 
                               {COUNTRY =  data$Country %in% country}
