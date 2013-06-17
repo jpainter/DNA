@@ -148,7 +148,7 @@ dedupe.edn.geo = function(){
     print(t)
      
 #### EDN Geocode function ====
-      setwd("geo/")
+#       setwd("geo/")
      ednGeocode = function(n=10, header="http://"){
           source('gGeoCode.R')
           start=Sys.time()
@@ -275,73 +275,7 @@ RequestGeoCode = function(maxit = 240, records=200, delay=1*60*60){
         }}
 }
 
-
-#### fix records with missing state and country codes =====
-  directory = "//cdc/project/ccid_ncpdcid_dgmq/IRMH/_Epi Team/PanelDB/"
-  load(paste(directory, "edn.geo.rda", sep=""))
-
-      rownames(edn.geo) = edn.geo$AddressID
-      rownames(arrivals) = arrivals$AddressID
-      str(edn.geo)
-      str(arrivals)
-      sum(is.na(arrivals$Country))
-      sum(is.na(arrivals$Latitude))
-      
-      arrivals[rownames(edn.geo), "Latitude" ] = edn.geo[rownames(edn.geo), "Latitude"]
-      arrivals[rownames(edn.geo), "Longitude" ] = edn.geo[rownames(edn.geo), "Longitude"]
-      arrivals[rownames(edn.geo), "Status" ] = edn.geo[rownames(edn.geo), "Status"]
-      arrivals[rownames(edn.geo), "Accuracy" ] = edn.geo[rownames(edn.geo), "Accuracy"]
-      arrivals[rownames(edn.geo), "ReturnedAddress" ] = edn.geo[rownames(edn.geo), "ReturnedAddress"]
-      arrivals$ReturnedAddress = as.character(arrivals$ReturnedAddress)
-      table(arrivals$Country, useNA="always") # Country is country.code
-      arrivals = arrivals[!is.na(arrivals$Country),]
-      table(arrivals$State, useNA="always") # Country is country.code
-      no.country = is.na(arrivals$Country)
-      sum(no.country)
-      table(year(arrivals[,"NotificationDate"]))
-      ####
-      edn.geo.old = edn.geo
-      edn.geo = arrivals
-
-
-
-#       colnames(edn.geo)
-#       table(edn.geo$Country, useNA="always")
-#       table(edn.geo$country.code, useNA="always")
-#       str(edn.geo$country.code)
-#       str(arrivals$Country)
-#       table(arrivals$Country, useNA="always") # Country is country.code
-#       # unfactor country.code, replace values from arrivals
-#       edn.geo$country.code = as.character(edn.geo$country.code)
-#       edn.geo$Country = as.character(edn.geo$Country)
-#       # set country to country.code
-#       edn.geo[rownames(arrivals), "Country" ] = 
-#         arrivals[rownames(arrivals), "Country" ]
-#       table(edn.geo$Country, useNA="always")
-#       
-#       table(edn.geo$state.abb, useNA="always")
-#       table(edn.geo$State, useNA="always")
-#       str(edn.geo$state.abb)
-#       str(edn.geo$State)
-#       table(arrivals$State, useNA="always") # Country is country.code
-#       # unfactor country.code, replace values from arrivals
-#       edn.geo$state.abb = as.character(edn.geo$state.abb)
-#       # set State to state.abb
-#       edn.geo[rownames(arrivals), "state.abb" ] = 
-#         arrivals[rownames(arrivals), "State" ]
-#       table(edn.geo$state.abb, useNA="always")
-#       
-#       # Remove weird colnames
-#       keep.cols = colnames(edn.geo[,-c(21:38)])
-#       keep.cols
-#       edn.geo = edn.geo[, keep.cols] 
-#       str(edn.geo)
-#       edn.geo$ReturnedAddress = as.character(edn.geo$ReturnedAddress)
-#       colnames(edn.geo)
-#       keep.cols = colnames(edn.geo[,-c(2:14, 16:20)])
-#       keep.cols
-#       edn.geo = edn.geo[, keep.cols] 
-#       str(edn.geo)
+RequestGeoCode()
 
 # ===== Summary ====    
      # number notifications by year
@@ -360,55 +294,5 @@ RequestGeoCode = function(maxit = 240, records=200, delay=1*60*60){
      t = addmargins(t, c(1:2))
      print(t)
 
-     
- #  ===== Add long names for country and state
-    ##### need to fix....this causes duplicate columns
-    setwd("geo/")
-    # add country names
-    load("country.lat.long.rda") # country codes and names (edn has codes only)
-    country.cols = colnames(country.lat.long)[c(2:6,8)]
-    countries = country.lat.long[,country.cols]
-    str(countries)
-    colnames(countries)
-    colnames(countries)[5] = "country.name"
-    colnames(countries)[6] = "country.code"
-    colnames(countries)
-
-    edn.geo = merge(edn.geo, countries,
-                       by.y="country.code", 
-                       by.x="Country",  
-                       all.x=TRUE,
-                       sort=FALSE, sufficxes='')
-    colnames(edn.geo)
-    str(edn.geo)
-    table(edn.geo$country.name, useNA='always')
-    no.country = is.na(edn.geo$country.name)
-    table(edn.geo[no.country,"Country"], useNA="always")
-    table(edn.geo[no.country,"Country"],
-          year(edn.geo[no.country,"NotificationDate"]),
-          useNA="always")
-    
-     
-     # add state names
-      str(edn.geo)
-     load("state.codes.rda")
-      str(state.codes)
-      colnames(state.codes)
-      states = state.codes[,c(1:3,8)]
-      states$abb = as.character(states$abb)
-     edn.geo = merge(edn.geo , states, 
-                      by.x="State", by.y="abb",
-                     all.x = TRUE,
-                     sort=FALSE, sufficxes='')
-     colnames(edn.geo)
-      table(edn.geo$state, useNA='always')
-      no.state = is.na(edn.geo$state)
-      table(edn.geo[no.state,"State"], useNA="always")
-      table(edn.geo[no.state,"State"],
-            year(edn.geo[no.state,"NotificationDate"]), 
-            useNA="always")
-                     
-     
-#      save(edn.geo, file = paste(directory, "edn.geo.rda", sep="")) 
      
 
